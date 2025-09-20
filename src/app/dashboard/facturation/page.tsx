@@ -1,44 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useCallback, useEffect, useState } from "react"
+import { toast } from "sonner"
+import { useAuth } from "@/lib/auth"
+import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FacturationActions } from "@/components/facturation/FacturationActions"
+import { FacturationTable } from "@/components/facturation/FacturationTable"
+import { CalendrierButton } from "@/components/facturation/CalendrierButton"
+import { GenerationFactureDialog } from "@/components/facturation/GenerationFactureDialog"
+import { FooterConfigDialog } from "@/components/facturation/FooterConfigDialog"
+import { Facture, Exercice, Calendrier, FooterConfig, GenerationParams } from "@/components/facturation/types"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import {
-    Plus,
-    Download,
-    Send,
-    Calendar,
-    Eye,
-    Settings,
-    RefreshCw,
-    FileText,
-    Receipt,
-    ChevronLeft,
-    ChevronRight,
-    CheckCircle,
-    Clock,
-    AlertCircle
-} from "lucide-react"
-import { getToken } from "@/lib/auth"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Facture {
     id: string
@@ -78,12 +54,12 @@ interface FooterConfig {
 
 export default function FacturationPage() {
     const [factures, setFactures] = useState<Facture[]>([])
-    const [calendrier, setCalendrier] = useState<Calendrier[]>([])
-    const [loading, setLoading] = useState(true)
-    const [generating, setGenerating] = useState(false)
-    const [sending, setSending] = useState(false)
-    const [createDialogOpen, setCreateDialogOpen] = useState(false)
-    const [footerDialogOpen, setFooterDialogOpen] = useState(false)
+    const [calendrier, setCalendrier] = useState<Calendrier | null>(null)
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+    const [loading, setLoading] = useState<boolean>(true)
+    const [generating, setGenerating] = useState<boolean>(false)
+    const [generationDialogOpen, setGenerationDialogOpen] = useState<boolean>(false)
+    const [footerDialogOpen, setFooterDialogOpen] = useState<boolean>(false)
     const [footerConfig, setFooterConfig] = useState<FooterConfig>({
         companyName: "",
         companyAddress: "",
@@ -93,62 +69,111 @@ export default function FacturationPage() {
         companyPhone: "",
         paymentNote: ""
     })
-    const [newExercice, setNewExercice] = useState({
-        annee: new Date().getFullYear(),
-        invoiceDayOfNextMonth: 1,
-        overwriteIfExists: false
-    })
-    const [selectedGeneration, setSelectedGeneration] = useState({
-        annee: new Date().getFullYear(),
-        mois: new Date().getMonth() + 1
-    })
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-    const token = getToken()
+  
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(0)
+    const [pageSize, setPageSize] = useState(10)
+    const [totalPages, setTotalPages] = useState(1)
+    const [totalElements, setTotalElements] = useState(0)
 
-    const loadFactures = async () => {
+    const { token } = useAuth()
+
+    const loadClientInfo = async (clientId: string) => {
+        try {
+            const response = await fetch(
+                `https://api-smsgateway.solutech-one.com/api/V1/clients/${clientId}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
+                }
+            )
+
+            if (response.ok) {
+                const clientData = await response.json()
+                return clientData.raisonSociale || `Client ${clientId}`
+            }
+            return `Client ${clientId}`
+        } catch (error) {
+            console.error("Erreur lors du chargement des informations du client:", error)
+            return `Client ${clientId}`
+        }
+    }
+
+    const loadFactures = useCallback(async () => {
         if (!token) return
 
         setLoading(true)
         try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/billing/factures", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
-            })
+            // Chargement des factures
+            const response = await fetch(
+                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
+                }
+            )
 
-            if (!response.ok) throw new Error("Erreur API factures")
+            if (!response.ok) {
+                throw new Error("Erreur lors du chargement des factures")
+            }
 
-            const data = await response.json()
-            setFactures(data)
+            const facturesData = await response.json()
+            
+            // Si ce n'est pas un tableau, on retourne un tableau vide
+            if (!Array.isArray(facturesData)) {
+                setFactures([])
+                return
+            }
+
+            // Pour chaque facture, on charge les informations du client
+            const facturesAvecClients = await Promise.all(
+                facturesData.map(async (facture: any) => {
+                    const clientNom = await loadClientInfo(facture.clientId)
+                    return {
+                        ...facture,
+                        clientNom,
+                        clientEmail: facture.clientEmail || ''
+                    }
+                })
+            )
+
+            setFactures(facturesAvecClients)
         } catch (error) {
-            console.error("Erreur:", error)
+            console.error("Erreur lors du chargement des factures:", error)
+            toast.error("Erreur lors du chargement des factures")
         } finally {
             setLoading(false)
         }
-    }
+    }, [token])
 
-    const loadCalendrier = async (annee: number) => {
+    const loadCalendrier = useCallback(async (annee: number) => {
         if (!token) return
 
         try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${annee}/calendrier`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
-            })
+            const response = await fetch(
+                `https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${annee}/calendrier`, 
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
+                    cache: 'no-store'
+                }
+            )
 
             if (!response.ok) throw new Error("Erreur API calendrier")
 
             const data = await response.json()
             setCalendrier(data)
         } catch (error) {
-            console.error("Erreur:", error)
+            console.error("Erreur lors du chargement du calendrier:", error)
+            toast.error("Erreur lors du chargement du calendrier")
         }
-    }
+    }, [token])
 
-    const loadFooterConfig = async () => {
+    const loadFooterConfig = useCallback(async () => {
         if (!token) return
 
         try {
@@ -157,6 +182,7 @@ export default function FacturationPage() {
                     Authorization: `Bearer ${token}`,
                     Accept: "application/json",
                 },
+                cache: 'no-store'
             })
 
             if (response.ok) {
@@ -164,131 +190,124 @@ export default function FacturationPage() {
                 setFooterConfig(data)
             }
         } catch (error) {
-            console.error("Erreur:", error)
+            console.error("Erreur lors du chargement de la configuration du pied de page:", error)
+            toast.error("Erreur lors du chargement de la configuration du pied de page")
         }
-    }
+    }, [token])
 
+    // Chargement initial des données
     useEffect(() => {
-        loadFactures()
-        loadCalendrier(selectedYear)
-        loadFooterConfig()
-    }, [token, selectedYear])
-
-    const createExercice = async () => {
-        if (!token) return
-
-        try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/billing/exercices", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify(newExercice)
-            })
-
-            if (!response.ok) throw new Error("Erreur création exercice")
-
-            await loadCalendrier(newExercice.annee)
-            setSelectedYear(newExercice.annee)
-            setCreateDialogOpen(false)
-            alert("Exercice créé avec succès")
-        } catch (error) {
-            console.error("Erreur:", error)
-            alert("Erreur lors de la création de l'exercice")
+        if (token) {
+            loadFactures()
+            loadCalendrier(selectedYear)
+            loadFooterConfig()
         }
-    }
+    }, [token, loadFactures, loadCalendrier, loadFooterConfig, selectedYear])
 
-    const genererFacture = async () => {
+    // Mise à jour de la pagination lorsque les données changent
+    useEffect(() => {
+        setTotalPages(Math.ceil(factures.length / pageSize) || 1)
+        setTotalElements(factures.length)
+    }, [factures, pageSize])
+
+    // Calcul des factures à afficher pour la page courante
+    const paginatedFactures = factures.slice(
+        currentPage * pageSize,
+        (currentPage + 1) * pageSize
+    )
+
+    const handleGenerateInvoices = useCallback(async (params: GenerationParams) => {
         if (!token) return
 
         setGenerating(true)
         try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/generer?annee=${selectedGeneration.annee}&mois=${selectedGeneration.mois}`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
-            })
+            const response = await fetch(
+                `https://api-smsgateway.solutech-one.com/api/V1/billing/generer?annee=${params.annee}&mois=${params.mois}`, 
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",
+                    },
+                }
+            )
 
-            if (!response.ok) throw new Error("Erreur génération facture")
+            if (!response.ok) throw new Error("Erreur lors de la génération des factures")
 
             const result = await response.json()
-            alert(`Factures générées: ${result.generated}\nZéro consommation: ${result.skippedZero}`)
-
-            // Recharger les factures
+            toast.success(
+                `Factures générées avec succès: ${result.generated} factures créées`
+            )
+            
+            // Recharger les données
             await loadFactures()
+            setGenerationDialogOpen(false)
         } catch (error) {
-            console.error("Erreur:", error)
-            alert("Erreur lors de la génération des factures")
+            console.error("Erreur lors de la génération des factures:", error)
+            toast.error("Erreur lors de la génération des factures")
         } finally {
             setGenerating(false)
         }
-    }
+    }, [token, loadFactures])
 
-    const envoyerFacture = async (factureId: string) => {
+    const handleDownloadAll = useCallback(async () => {
         if (!token) return
+            
+        toast.info("Téléchargement de toutes les factures en cours...")
+            
+        // Implémentez la logique de téléchargement groupé ici
+        // Cette fonctionnalité pourrait nécessiter une implémentation côté serveur
+        toast.warning("Fonctionnalité de téléchargement groupé non implémentée")
+    }, [token])
 
-        setSending(true)
-        try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/send`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
-            })
+    const handleSendAll = useCallback(async () => {
+        if (!token) return
+            
+        toast.info("Envoi de toutes les factures en cours...")
+            
+        // Implémentez la logique d'envoi groupé ici
+        // Cette fonctionnalité pourrait nécessiter une implémentation côté serveur
+        toast.warning("Fonctionnalité d'envoi groupé non implémentée")
+    }, [token])
 
-            if (!response.ok) throw new Error("Erreur envoi facture")
-
-            alert("Facture envoyée avec succès")
-        } catch (error) {
-            console.error("Erreur:", error)
-            alert("Erreur lors de l'envoi de la facture")
-        } finally {
-            setSending(false)
-        }
-    }
-
-    const previsualiserFacture = async (factureId: string) => {
+    const handlePreviewInvoice = useCallback(async (factureId: string) => {
         if (!token) return
 
         try {
             const pdfUrl = `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/pdf`
 
             const response = await fetch(pdfUrl, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
+                cache: 'no-store'
             })
 
-            if (!response.ok) throw new Error("Erreur accès PDF")
+            if (!response.ok) throw new Error("Erreur d'accès au PDF")
 
             const blob = await response.blob()
             const blobUrl = URL.createObjectURL(blob)
-
             window.open(blobUrl, "_blank")
-
+            
+            // Nettoyer l'URL après utilisation
             setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
         } catch (error) {
-            console.error("Erreur:", error)
-            alert("Impossible d'accéder au PDF")
+            console.error("Erreur lors de la prévisualisation de la facture:", error)
+            toast.error("Impossible d'accéder au PDF de la facture")
         }
-    }
+    }, [token])
 
-    const downloadFacture = async (factureId: string) => {
+    const handleDownloadInvoice = useCallback(async (factureId: string) => {
         if (!token) return
 
         try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/pdf`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            })
+            const response = await fetch(
+                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/pdf`, 
+                {
+                    headers: { Authorization: `Bearer ${token}` },
+                    cache: 'no-store'
+                }
+            )
 
-            if (!response.ok) throw new Error("Erreur téléchargement PDF")
+            if (!response.ok) throw new Error("Erreur de téléchargement du PDF")
 
             const blob = await response.blob()
             const blobUrl = URL.createObjectURL(blob)
@@ -300,14 +319,15 @@ export default function FacturationPage() {
             link.click()
             document.body.removeChild(link)
 
+            // Nettoyage
             setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
         } catch (error) {
-            console.error("Erreur:", error)
-            alert("Impossible de télécharger le PDF")
+            console.error("Erreur lors du téléchargement de la facture:", error)
+            toast.error("Erreur lors du téléchargement de la facture")
         }
-    }
+    }, [token])
 
-    const updateFooterConfig = async () => {
+    const handleSaveFooterConfig = useCallback(async (config: FooterConfig) => {
         if (!token) return
 
         try {
@@ -318,75 +338,29 @@ export default function FacturationPage() {
                     "Content-Type": "application/json",
                     Accept: "application/json",
                 },
-                body: JSON.stringify(footerConfig)
+                body: JSON.stringify(config)
             })
 
-            if (!response.ok) throw new Error("Erreur mise à jour footer")
+            if (!response.ok) throw new Error("Erreur lors de la sauvegarde de la configuration")
 
+            setFooterConfig(config)
             setFooterDialogOpen(false)
-            alert("Configuration du footer mise à jour")
+            toast.success("Configuration du pied de page enregistrée avec succès")
         } catch (error) {
-            console.error("Erreur:", error)
-            alert("Erreur lors de la mise à jour du footer")
+            console.error("Erreur lors de l'enregistrement de la configuration:", error)
+            toast.error("Erreur lors de l'enregistrement de la configuration")
         }
-    }
+    }, [token])
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("fr-FR", {
-            style: "currency",
-            currency: "XOF",
-        }).format(amount)
-    }
-
-    const getMonthName = (month: number) => {
-        const months = [
-            "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-        ]
-        return months[month - 1] || ""
-    }
-
-    const getStatusIcon = (statut: string) => {
-        switch (statut) {
-            case "OUVERT":
-                return <CheckCircle className="h-4 w-4 text-green-500" />
-            case "EN_COURS":
-                return <Clock className="h-4 w-4 text-blue-500" />
-            default:
-                return <AlertCircle className="h-4 w-4 text-gray-500" />
-        }
-    }
-
-    const getStatusColor = (statut: string) => {
-        switch (statut) {
-            case "OUVERT":
-                return "bg-green-100 text-green-800 border-green-200"
-            case "EN_COURS":
-                return "bg-blue-100 text-blue-800 border-blue-200"
-            default:
-                return "bg-gray-100 text-gray-800 border-gray-200"
-        }
-    }
-
-    const isCurrentMonth = (mois: number, annee: number) => {
-        const now = new Date()
-        return mois === now.getMonth() + 1 && annee === now.getFullYear()
-    }
-
-    const isFutureMonth = (mois: number, annee: number) => {
-        const now = new Date()
-        return annee > now.getFullYear() || (annee === now.getFullYear() && mois > now.getMonth() + 1)
-    }
-
-    const navigateYear = (direction: 'prev' | 'next') => {
-        setSelectedYear(prev => direction === 'prev' ? prev - 1 : prev + 1)
-    }
+    const handleYearChange = useCallback((year: number) => {
+        setSelectedYear(year)
+    }, [])
 
     if (loading) {
         return (
             <div className="p-6 flex items-center justify-center h-64">
                 <div className="text-center">
-                    <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
                     <p>Chargement des factures...</p>
                 </div>
             </div>
@@ -394,494 +368,137 @@ export default function FacturationPage() {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            {/* En-tête */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">Facturation</h1>
-                    <p className="text-gray-600">Gestion des factures et exercices comptables</p>
+        <div className="container mx-auto p-6 space-y-6">
+            <div className="space-y-6">
+                <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-2">
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Gestion de la Facturation</h1>
+                        <p className="text-muted-foreground">
+                            Générez et gérez les factures mensuelles de vos clients
+                        </p>
+                    </div>
+                    <CalendrierButton 
+                        calendrier={calendrier}
+                        selectedYear={selectedYear}
+                        onYearChange={handleYearChange}
+                        loading={loading}
+                    />
                 </div>
-
-                <div className="flex items-center gap-2">
-                    <Button onClick={() => setFooterDialogOpen(true)} variant="outline">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Footer
-                    </Button>
-                    <Button onClick={() => setCreateDialogOpen(true)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Nouvel exercice
-                    </Button>
-                    <Button onClick={loadFactures} variant="outline">
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Actualiser
-                    </Button>
-                </div>
-            </div>
-
-            {/* Cartes de stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Total factures</CardTitle>
-                        <Receipt className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{factures.length}</div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {formatCurrency(factures.reduce((sum, f) => sum + f.montant, 0))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">SMS consommés</CardTitle>
-                        <Send className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {factures.reduce((sum, f) => sum + f.consommationSms, 0)}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Exercices</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {Array.from(new Set(calendrier.map(c => c.exercice.annee))).length}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Section génération de factures */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Génération de factures</CardTitle>
-                    <CardDescription>Générez les factures pour un mois spécifique</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex flex-col sm:flex-row gap-4 items-end">
-                        <div className="grid grid-cols-2 gap-4 flex-1">
-                            <div className="space-y-2">
-                                <Label>Année</Label>
-                                <Select
-                                    value={selectedGeneration.annee.toString()}
-                                    onValueChange={(value) => setSelectedGeneration(prev => ({
-                                        ...prev,
-                                        annee: parseInt(value)
-                                    }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner une année" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {[2024, 2025, 2026].map(year => (
-                                            <SelectItem key={year} value={year.toString()}>
-                                                {year}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Mois</Label>
-                                <Select
-                                    value={selectedGeneration.mois.toString()}
-                                    onValueChange={(value) => setSelectedGeneration(prev => ({
-                                        ...prev,
-                                        mois: parseInt(value)
-                                    }))}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Sélectionner un mois" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
-                                            <SelectItem key={month} value={month.toString()}>
-                                                {getMonthName(month)}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                        <Button onClick={genererFacture} disabled={generating}>
-                            {generating ? (
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                
+                <div className="space-y-4">
+                    <FacturationActions 
+                        onGenerate={() => setGenerationDialogOpen(true)}
+                        onDownloadAll={handleDownloadAll}
+                        onSendAll={handleSendAll}
+                        onConfigureFooter={() => setFooterDialogOpen(true)}
+                        loading={loading}
+                    />
+                    
+                    <FacturationTable 
+                        factures={paginatedFactures}
+                        onPreview={handlePreviewInvoice}
+                        onDownload={handleDownloadInvoice}
+                        onSend={handleSendAll}
+                        loading={loading}
+                    />
+                    
+                    {/* Pagination */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-4 border-t">
+                        <div className="text-sm text-muted-foreground">
+                            {totalElements > 0 ? (
+                                `${(currentPage * pageSize) + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} sur ${totalElements} facture(s)`
                             ) : (
-                                <FileText className="h-4 w-4 mr-2" />
+                                'Aucune facture trouvée'
                             )}
-                            Générer les factures
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Tableau des factures */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Liste des factures</CardTitle>
-                    <CardDescription>{factures.length} facture(s) trouvée(s)</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Client</TableHead>
-                                    <TableHead>Période</TableHead>
-                                    <TableHead>SMS</TableHead>
-                                    <TableHead>Prix unitaire</TableHead>
-                                    <TableHead>Montant</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {factures.length > 0 ? (
-                                    factures.map((facture) => (
-                                        <TableRow key={facture.id}>
-                                            <TableCell className="font-medium">{facture.clientId}</TableCell>
-                                            <TableCell>
-                                                {new Date(facture.dateDebut).toLocaleDateString()} -{" "}
-                                                {new Date(facture.dateFin).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>{facture.consommationSms}</TableCell>
-                                            <TableCell>{formatCurrency(facture.prixUnitaire)}</TableCell>
-                                            <TableCell className="font-medium">
-                                                {formatCurrency(facture.montant)}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => previsualiserFacture(facture.id)}
-                                                    >
-                                                        <Eye className="h-4 w-4 mr-2" />
-                                                        Voir
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => envoyerFacture(facture.id)}
-                                                        disabled={sending}
-                                                    >
-                                                        <Send className="h-4 w-4 mr-2" />
-                                                        Envoyer
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => downloadFacture(facture.id)}
-                                                    >
-                                                        <Download className="h-4 w-4 mr-2" />
-                                                        PDF
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center text-gray-500 py-8">
-                                            Aucune facture trouvée
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Calendrier des exercices - Version améliorée */}
-            <Card>
-                <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <div>
-                            <CardTitle>Calendrier des exercices</CardTitle>
-                            <CardDescription>Planning de génération des factures</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigateYear('prev')}
-                                disabled={selectedYear <= 2020}
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <span className="text-lg font-bold bg-primary text-primary-foreground px-3 py-1 rounded-md">
-                {selectedYear}
-              </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => navigateYear('next')}
-                                disabled={selectedYear >= 2030}
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
-                            const moisCalendrier = calendrier.find(c => c.mois === month)
-                            const isCurrent = isCurrentMonth(month, selectedYear)
-                            const isFuture = isFutureMonth(month, selectedYear)
 
-                            return (
-                                <div
-                                    key={month}
-                                    className={`rounded-lg border p-4 transition-all duration-200 ${
-                                        isCurrent
-                                            ? 'bg-primary/10 border-primary shadow-md ring-2 ring-primary/20'
-                                            : isFuture
-                                                ? 'bg-muted/50 border-muted'
-                                                : 'bg-white border-border hover:shadow-md'
-                                    }`}
+                        <div className="flex items-center space-x-6 lg:space-x-8">
+                            <div className="flex items-center space-x-2">
+                                <p className="text-sm font-medium">Lignes par page</p>
+                                <Select
+                                    value={`${pageSize}`}
+                                    onValueChange={(value) => {
+                                        setPageSize(Number(value))
+                                        setCurrentPage(0) // Reset à la première page lors du changement de taille
+                                    }}
                                 >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-semibold text-lg">
-                                            {getMonthName(month)}
-                                        </h3>
-                                        {isCurrent && (
-                                            <Badge variant="default" className="animate-pulse">
-                                                En cours
-                                            </Badge>
-                                        )}
-                                    </div>
-
-                                    {moisCalendrier ? (
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex items-center gap-2">
-                                                {getStatusIcon(moisCalendrier.exercice.statut)}
-                                                <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(moisCalendrier.exercice.statut)}`}>
-                          {moisCalendrier.exercice.statut}
-                        </span>
-                                            </div>
-
-                                            <div className="grid gap-1">
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Début:</span>
-                                                    <span className="font-medium">
-                            {new Date(moisCalendrier.dateDebutConsommation).toLocaleDateString()}
-                          </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Fin:</span>
-                                                    <span className="font-medium">
-                            {new Date(moisCalendrier.dateFinConsommation).toLocaleDateString()}
-                          </span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Génération:</span>
-                                                    <span className="font-medium">
-                            {new Date(moisCalendrier.dateGenerationFacture).toLocaleDateString()}
-                          </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-6 text-muted-foreground">
-                                            <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                            <p className="text-sm">Aucun exercice planifié</p>
-                                        </div>
-                                    )}
+                                    <SelectTrigger className="h-8 w-[70px]">
+                                        <SelectValue placeholder={pageSize} />
+                                    </SelectTrigger>
+                                    <SelectContent side="top">
+                                        {[5, 10, 20, 30, 50].map((size) => (
+                                            <SelectItem key={size} value={`${size}`}>
+                                                {size}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="flex items-center space-x-2">
+                                <Button
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setCurrentPage(0)}
+                                    disabled={currentPage === 0}
+                                >
+                                    <span className="sr-only">Première page</span>
+                                    <ChevronsLeft className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+                                    disabled={currentPage === 0}
+                                >
+                                    <span className="sr-only">Page précédente</span>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <div className="flex items-center justify-center text-sm font-medium w-8">
+                                    {currentPage + 1}
                                 </div>
-                            )
-                        })}
+                                <Button
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+                                    disabled={currentPage >= totalPages - 1}
+                                >
+                                    <span className="sr-only">Page suivante</span>
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="h-8 w-8 p-0"
+                                    onClick={() => setCurrentPage(totalPages - 1)}
+                                    disabled={currentPage >= totalPages - 1}
+                                >
+                                    <span className="sr-only">Dernière page</span>
+                                    <ChevronsRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
 
-            {/* Dialog création exercice */}
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Créer un nouvel exercice</DialogTitle>
-                        <DialogDescription>
-                            Configurez un nouvel exercice comptable pour l'année sélectionnée
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="annee">Année</Label>
-                            <Input
-                                id="annee"
-                                type="number"
-                                value={newExercice.annee}
-                                onChange={(e) => setNewExercice(prev => ({
-                                    ...prev,
-                                    annee: parseInt(e.target.value) || new Date().getFullYear()
-                                }))}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="invoiceDay">Jour de génération des factures</Label>
-                            <Input
-                                id="invoiceDay"
-                                type="number"
-                                min="1"
-                                max="28"
-                                value={newExercice.invoiceDayOfNextMonth}
-                                onChange={(e) => setNewExercice(prev => ({
-                                    ...prev,
-                                    invoiceDayOfNextMonth: parseInt(e.target.value) || 1
-                                }))}
-                            />
-                            <p className="text-sm text-muted-foreground">
-                                Jour du mois suivant pour la génération automatique des factures
-                            </p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="checkbox"
-                                id="overwrite"
-                                checked={newExercice.overwriteIfExists}
-                                onChange={(e) => setNewExercice(prev => ({
-                                    ...prev,
-                                    overwriteIfExists: e.target.checked
-                                }))}
-                                className="rounded border-gray-300"
-                            />
-                            <Label htmlFor="overwrite" className="text-sm">
-                                Écraser si l'exercice existe déjà
-                            </Label>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                            Annuler
-                        </Button>
-                        <Button onClick={createExercice}>
-                            Créer l'exercice
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                <GenerationFactureDialog 
+                    open={generationDialogOpen}
+                    onOpenChange={setGenerationDialogOpen}
+                    onSubmit={handleGenerateInvoices}
+                    loading={generating}
+                    defaultValues={{
+                        annee: new Date().getFullYear(),
+                        mois: new Date().getMonth() + 1
+                    }}
+                />
 
-            {/* Dialog configuration footer */}
-            <Dialog open={footerDialogOpen} onOpenChange={setFooterDialogOpen}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Configuration du footer des factures</DialogTitle>
-                        <DialogDescription>
-                            Personnalisez les informations qui apparaîtront en bas de vos factures
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="companyName">Nom de l'entreprise</Label>
-                                <Input
-                                    id="companyName"
-                                    value={footerConfig.companyName}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyName: e.target.value
-                                    }))}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="companyAddress">Adresse</Label>
-                                <Input
-                                    id="companyAddress"
-                                    value={footerConfig.companyAddress}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyAddress: e.target.value
-                                    }))}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="companyNif">NIF</Label>
-                                <Input
-                                    id="companyNif"
-                                    value={footerConfig.companyNif}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyNif: e.target.value
-                                    }))}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="companyRccm">RCCM</Label>
-                                <Input
-                                    id="companyRccm"
-                                    value={footerConfig.companyRccm}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyRccm: e.target.value
-                                    }))}
-                                />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="companyEmail">Email</Label>
-                                <Input
-                                    id="companyEmail"
-                                    type="email"
-                                    value={footerConfig.companyEmail}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyEmail: e.target.value
-                                    }))}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="companyPhone">Téléphone</Label>
-                                <Input
-                                    id="companyPhone"
-                                    value={footerConfig.companyPhone}
-                                    onChange={(e) => setFooterConfig(prev => ({
-                                        ...prev,
-                                        companyPhone: e.target.value
-                                    }))}
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentNote">Note de paiement</Label>
-                            <Input
-                                id="paymentNote"
-                                value={footerConfig.paymentNote}
-                                onChange={(e) => setFooterConfig(prev => ({
-                                    ...prev,
-                                    paymentNote: e.target.value
-                                }))}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setFooterDialogOpen(false)}>
-                            Annuler
-                        </Button>
-                        <Button onClick={updateFooterConfig}>
-                            Enregistrer
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                <FooterConfigDialog
+                    open={footerDialogOpen}
+                    onOpenChange={setFooterDialogOpen}
+                    onSubmit={handleSaveFooterConfig}
+                    defaultValues={footerConfig}
+                    loading={false}
+                />
+            </div>
         </div>
     )
 }

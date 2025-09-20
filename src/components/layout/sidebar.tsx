@@ -21,13 +21,13 @@ export function Sidebar() {
     return (
         <aside className="w-64 h-screen bg-gradient-to-b from-[#0072BB] to-[#005a96] text-white p-5 flex flex-col">
             {/* Logo */}
-            <div className="mb-8 pt-4 flex justify-center">
-                <div className="w-full h-20 bg-white rounded-lg flex items-center justify-center shadow-lg p-1">
+            <div className="mb-8 -mt-2 flex justify-center">
+                <div className="w-11/12 h-24 bg-white rounded-lg flex items-center justify-center shadow-lg p-2">
                     <Image
                         src="/Logo_ION-1-removebg-preview 1.png"
                         alt="Logo"
-                        width={140}
-                        height={32}
+                        width={150}
+                        height={36}
                         className="object-contain"
                     />
                 </div>

@@ -1,0 +1,264 @@
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MoreHorizontal, CheckCircle, XCircle, Eye, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react"
+import { CreditRequest } from "@/types/credit"
+import { CreditStatusBadge } from "./CreditStatusBadge"
+import React, { useEffect, useState } from "react"
+import { getClientById, ClientInfo } from "@/lib/client-utils"
+
+interface CreditListProps {
+  credits: CreditRequest[]
+  loading: boolean
+  onApprove: (id: string) => void
+  onReject: (credit: CreditRequest) => void
+  onViewReason: (credit: CreditRequest) => void
+  currentPage: number
+  totalPages: number
+  totalElements: number
+  pageSize: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (size: number) => void
+}
+
+export function CreditList({ 
+  credits, 
+  loading, 
+  onApprove, 
+  onReject, 
+  onViewReason,
+  currentPage,
+  totalPages,
+  totalElements,
+  pageSize,
+  onPageChange,
+  onPageSizeChange
+}: CreditListProps) {
+  const [clients, setClients] = useState<Record<string, ClientInfo>>({})
+  const [loadingClients, setLoadingClients] = useState<boolean>(false)
+  
+  // Charger les informations des clients manquants
+  useEffect(() => {
+    const loadMissingClients = async () => {
+      // Filtrer les crédits qui n'ont pas encore de données client chargées
+      const missingClientIds = credits
+        .filter(credit => !clients[credit.clientId])
+        .map(credit => credit.clientId)
+      
+      if (missingClientIds.length === 0) return
+      
+      setLoadingClients(true)
+      try {
+        // Charger les clients manquants par lots de 10 pour éviter les requêtes excessives
+        const batchSize = 10
+        for (let i = 0; i < missingClientIds.length; i += batchSize) {
+          const batch = missingClientIds.slice(i, i + batchSize)
+          const newClients = await Promise.all(
+            batch.map(id => getClientById(id))
+          )
+          
+          // Mettre à jour l'état avec les nouveaux clients
+          setClients(prevClients => ({
+            ...prevClients,
+            ...newClients.reduce((acc, client) => {
+              if (client) acc[client.idclients] = client
+              return acc
+            }, {} as Record<string, ClientInfo>)
+          }))
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des clients:", error)
+      } finally {
+        setLoadingClients(false)
+      }
+    }
+    
+    loadMissingClients()
+  }, [credits])
+  
+  const startItem = credits.length > 0 ? (currentPage * pageSize) + 1 : 0
+  const endItem = Math.min((currentPage + 1) * pageSize, totalElements)
+  if (loading && credits.length === 0) {
+    return (
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-16 bg-muted/20 rounded-lg" />
+        ))}
+      </div>
+    )
+  }
+
+  if (credits.length === 0) {
+    return (
+      <div className="text-center py-12 border rounded-lg">
+        <p className="text-muted-foreground">Aucune demande de crédit trouvée</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+          <TableRow>
+            <TableHead>ID Client</TableHead>
+            <TableHead>Raison sociale</TableHead>
+            <TableHead>Quantité</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead>Créé le</TableHead>
+            <TableHead>Validé le</TableHead>
+            <TableHead>Validé par</TableHead>
+            <TableHead className="w-12">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {credits.map((credit) => (
+            <TableRow key={credit.id}>
+              <TableCell className="font-mono text-sm">{credit.clientId}</TableCell>
+              <TableCell>
+                {loadingClients && !clients[credit.clientId] 
+                  ? 'Chargement...' 
+                  : clients[credit.clientId]?.raisonSociale || credit.clientId}
+              </TableCell>
+              <TableCell>{credit.quantity}</TableCell>
+              <TableCell>
+                <CreditStatusBadge status={credit.status} />
+              </TableCell>
+              <TableCell>
+                {credit.createdAt ? (
+                  new Date(credit.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {credit.validatedAt ? (
+                  new Date(credit.validatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {credit.checkerEmail || '-'}
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Ouvrir le menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => onApprove(credit.id)}
+                      disabled={credit.status !== 'PENDING'}
+                      className="cursor-pointer"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Approuver
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onReject(credit)}
+                      disabled={credit.status !== 'PENDING'}
+                      className="cursor-pointer"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Rejeter
+                    </DropdownMenuItem>
+                    {credit.status === 'REJECTED' && credit.rejectReason && (
+                      <DropdownMenuItem
+                        onClick={() => onViewReason(credit)}
+                        className="cursor-pointer"
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Voir le motif
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-2">
+        <div className="flex-1 text-sm text-muted-foreground">
+          Affichage de {startItem} à {endItem} sur {totalElements} demandes
+        </div>
+        
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Lignes par page</p>
+            <Select
+              value={`${pageSize}`}
+              onValueChange={(value) => onPageSizeChange(Number(value))}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[5, 10, 20, 30, 40, 50].map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => onPageChange(0)}
+              disabled={currentPage === 0}
+            >
+              <span className="sr-only">Première page</span>
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+              disabled={currentPage === 0}
+            >
+              <span className="sr-only">Page précédente</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="flex items-center justify-center w-8 h-8 text-sm font-medium border rounded-md">
+              {currentPage + 1}
+            </div>
+            
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+              disabled={currentPage >= totalPages - 1}
+            >
+              <span className="sr-only">Page suivante</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => onPageChange(totalPages - 1)}
+              disabled={currentPage >= totalPages - 1}
+            >
+              <span className="sr-only">Dernière page</span>
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

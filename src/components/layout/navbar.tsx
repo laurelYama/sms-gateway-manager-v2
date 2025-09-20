@@ -99,33 +99,34 @@ export function Navbar() {
     }
 
     return (
-        <header className="h-16 bg-white border-b shadow-sm flex items-center justify-between px-6">
-            {/* Logo ou titre de l'application */}
-            <div className="flex items-center">
-                <h1 className="text-xl font-bold text-[#0072BB]">SMS Gateway Manager</h1>
-            </div>
+        <header className="w-full bg-white shadow-sm">
+            <div className="flex h-16 items-center justify-between px-6 w-full">
+                {/* Logo ou titre de l'application */}
+                <div className="flex items-center">
+                    <h1 className="text-xl font-bold text-[#0072BB]">SMS Gateway Manager</h1>
+                </div>
 
-            <div className="flex items-center gap-4">
-                {/* Notification Bell */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative"
-                    onClick={handleNotificationsClick}
-                >
-                    <Bell className="h-5 w-5" />
-                    {notificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-xs text-white items-center justify-center">
-                                {notificationCount}
-                            </span>
-                        </span>
-                    )}
-                </Button>
+                    <div className="flex items-center gap-4">
+                        {/* Notification Bell */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative"
+                            onClick={handleNotificationsClick}
+                        >
+                            <Bell className="h-5 w-5" />
+                            {notificationCount > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-xs text-white items-center justify-center">
+                                        {notificationCount}
+                                    </span>
+                                </span>
+                            )}
+                        </Button>
 
-                {/* Profile Dropdown */}
-                <DropdownMenu>
+                        {/* Profile Dropdown */}
+                        <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <div className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors">
                             <Avatar className="h-8 w-8">
@@ -199,8 +200,9 @@ export function Navbar() {
                             <span>Déconnexion</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-        </header>
+                        </DropdownMenu>
+                    </div>
+                </div>
+            </header>
     )
 }

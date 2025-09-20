@@ -1,4 +1,6 @@
 // src/lib/auth.ts
+import { useState, useEffect } from 'react';
+
 const TOKEN_KEY = "authToken"
 const USER_DATA_KEY = "userData"
 
@@ -54,7 +56,7 @@ export function clearToken(): void {
 export function decodeToken(token: string): UserToken | null {
     try {
         const payload = token.split('.')[1];
-        const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const base64 = payload.replace(/\-/g, '+').replace(/\_/g, '/');
         const decoded = atob(base64);
         return JSON.parse(decoded);
     } catch (error) {
@@ -75,6 +77,43 @@ export function isTokenExpired(token: string): boolean {
 // Vérifier la validité du token
 export function isValidToken(): boolean {
     const token = getToken();
-    if (!token) return false;
-    return !isTokenExpired(token);
+    return !!(token && !isTokenExpired(token));
+}
+
+// Hook personnalisé pour gérer l'authentification
+export function useAuth() {
+    const [token, setTokenState] = useState<string | null>(null);
+    const [userData, setUserData] = useState<UserToken | null>(null);
+
+    useEffect(() => {
+        const storedToken = getToken();
+        const storedUserData = getUserData();
+        
+        if (storedToken && storedUserData) {
+            setTokenState(storedToken);
+            setUserData(storedUserData);
+        }
+    }, []);
+
+    const login = (token: string) => {
+        setToken(token);
+        const userData = decodeToken(token);
+        if (userData) {
+            setUserData(userData);
+        }
+    };
+
+    const logout = () => {
+        clearToken();
+        setTokenState(null);
+        setUserData(null);
+    };
+
+    return {
+        token,
+        userData,
+        isAuthenticated: !!token && !isTokenExpired(token),
+        login,
+        logout
+    };
 }
