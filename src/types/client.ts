@@ -42,7 +42,7 @@ export interface CreateClientForm extends EditClientForm {
     emetteur: string
     coutSmsTtc: number
     typeCompte: string
-    motDePasse: string
+    motDePasse?: string // Le mot de passe est optionnel car il sera généré côté serveur
 }
 
 export interface ReferentielItem {

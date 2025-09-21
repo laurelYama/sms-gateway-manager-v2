@@ -205,7 +205,11 @@ export default function ClientsPage() {
             email: client.email,
             nif: client.nif,
             rccm: client.rccm,
-            pays: client.pays || ""
+            emetteur: client.emetteur || "",
+            coutSmsTtc: client.coutSmsTtc || 25,
+            typeCompte: client.typeCompte || "POSTPAYE",
+            indicatifPays: client.indicatifPays || "+241",
+            telephoneAvecIndicatif: client.telephoneAvecIndicatif || ""
         })
         setIsEditDialogOpen(true)
     }
@@ -217,35 +221,56 @@ export default function ClientsPage() {
 
     const toggleClientStatus = async (client: Client) => {
         const currentToken = getToken()
-        if (!currentToken) return
+        if (!currentToken) {
+            toast.error("Non authentifié")
+            return
+        }
 
+        const newStatus = client.statutCompte === "ACTIF" ? "SUSPENDU" : "ACTIF"
+        const endpoint = newStatus === "SUSPENDU" 
+            ? `https://api-smsgateway.solutech-one.com/api/V1/clients/${client.idclients}/suspend`
+            : `https://api-smsgateway.solutech-one.com/api/V1/clients/${client.idclients}/reactivate`
+        
         try {
-            const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/clients/${client.idclients}/toggle-status`,
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${currentToken}`,
-                        Accept: "application/json",
-                        "Content-Type": "application/json",
-                    },
+            console.log(`Tentative de changement de statut pour le client ${client.idclients} vers ${newStatus}`)
+            console.log(`URL: ${endpoint}`)
+            
+            const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${currentToken}`,
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
                 }
-            )
+            })
 
-            if (!response.ok) throw new Error("Erreur API statut")
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error("Erreur API statut:", response.status, errorText)
+                throw new Error(`Erreur API: ${response.status} - ${errorText}`)
+            }
 
+            console.log(`Statut du client ${client.idclients} changé avec succès vers ${newStatus}`)
+            
+            // Mise à jour optimiste de l'interface
             setClients(prevClients =>
                 prevClients.map(c =>
                     c.idclients === client.idclients
-                        ? {...c, statutCompte: c.statutCompte === "ACTIF" ? "SUSPENDU" : "ACTIF"}
+                        ? { ...c, statutCompte: newStatus }
                         : c
                 )
             )
 
-            toast.success(`Client ${client.statutCompte === "ACTIF" ? "suspendu" : "activé"} avec succès`)
+            toast.success(`Client ${newStatus === "SUSPENDU" ? "suspendu" : "activé"} avec succès`)
+            
+            // Rafraîchir la liste pour s'assurer que tout est à jour
+            loadClients(currentPage, pageSize)
+            
         } catch (error) {
             console.error("Erreur lors du changement de statut du client:", error)
-            toast.error("Une erreur s'est produite lors du changement de statut")
+            // Annuler la mise à jour optimiste en cas d'erreur
+            setClients(prevClients => [...prevClients])
+            toast.error(`Échec du changement de statut: ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
         }
     }
 

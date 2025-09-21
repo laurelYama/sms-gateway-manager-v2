@@ -37,7 +37,6 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
     emetteur: initialData.emetteur || "",
     coutSmsTtc: initialData.coutSmsTtc || 25,
     typeCompte: initialData.typeCompte || "POSTPAYE",
-    motDePasse: initialData.motDePasse || "",
     indicatifPays: initialData.indicatifPays || "+241",
     telephoneAvecIndicatif: initialData.telephoneAvecIndicatif || ""
   })
@@ -282,21 +281,6 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               </SelectContent>
             </Select>
           </div>
-
-          {mode === 'create' && (
-            <div className="space-y-2">
-              <Label htmlFor="motDePasse">Mot de passe *</Label>
-              <Input
-                id="motDePasse"
-                type="password"
-                value={formData.motDePasse}
-                onChange={(e) =>
-                  setFormData({ ...formData, motDePasse: e.target.value })
-                }
-                required
-              />
-            </div>
-          )}
         </div>
       )}
 

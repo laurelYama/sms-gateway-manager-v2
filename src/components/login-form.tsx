@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { ForgotPasswordForm } from "./forgot-password-form"
 
 export function LoginForm() {
     const [email, setEmail] = useState("")
@@ -14,8 +15,15 @@ export function LoginForm() {
     const [loading, setLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
     const [successMessage, setSuccessMessage] = useState("")
+    const [showForgotPassword, setShowForgotPassword] = useState(false)
 
     const router = useRouter()
+    
+    const handleBackToLogin = () => {
+        setShowForgotPassword(false)
+        setErrorMessage("")
+        setSuccessMessage("")
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -197,10 +205,13 @@ export function LoginForm() {
 
                         {/* Lien mot de passe oublié */}
                         <div className="mt-4 text-end">
-                            <a href="#"
-                               className="text-sm font-medium text-[#0072BB] hover:text-[#005b96] hover:cursor-pointer transition-colors">
+                            <button
+                                type="button"
+                                onClick={() => setShowForgotPassword(true)}
+                                className="text-sm font-medium text-[#0072BB] hover:text-[#005b96] hover:cursor-pointer transition-colors focus:outline-none"
+                            >
                                 Mot de passe oublié ?
-                            </a>
+                            </button>
                         </div>
 
                         {/* Bouton de connexion */}
@@ -214,6 +225,13 @@ export function LoginForm() {
                     </form>
                 </div>
             </div>
+            
+            {/* Overlay et formulaire de mot de passe oublié */}
+            {showForgotPassword && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <ForgotPasswordForm onBackToLogin={handleBackToLogin} />
+                </div>
+            )}
         </div>
     )
 }

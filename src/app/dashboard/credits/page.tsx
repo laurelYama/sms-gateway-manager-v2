@@ -84,7 +84,7 @@ export default function CreditsPage() {
             setTotalElements(data.totalElements)
             setCurrentPage(data.number)
         } catch (error) {
-            console.error("❌ Erreur API crédits:", error)
+            console.error("Erreur API crédits:", error)
         } finally {
             setLoading(false)
         }
@@ -134,29 +134,52 @@ export default function CreditsPage() {
     }
 
     const handleReject = async () => {
-        if (!selectedCredit || !token) return
+        if (!selectedCredit || !token) {
+            console.error("Aucun crédit sélectionné ou token manquant")
+            return
+        }
 
         try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/credits/${selectedCredit.id}/reject`, {
+            console.log("Tentative de rejet du crédit:", selectedCredit.id)
+            console.log("Raison du rejet:", rejectReason)
+            
+            const url = `https://api-smsgateway.solutech-one.com/api/V1/credits/${selectedCredit.id}/reject`
+            console.log("URL de la requête:", url)
+            
+            const requestBody = {
+                reason: rejectReason.trim()
+            }
+            console.log("Corps de la requête:", requestBody)
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    rejectReason: rejectReason
-                })
+                body: JSON.stringify(requestBody)
             })
 
-            if (!response.ok) throw new Error("Erreur lors du rejet")
+            const responseData = await response.json().catch(() => ({}))
+            console.log("Réponse de l'API:", {
+                status: response.status,
+                statusText: response.statusText,
+                data: responseData
+            })
+
+            if (!response.ok) {
+                throw new Error(`Erreur ${response.status}: ${response.statusText}`)
+            }
             
             // Réinitialiser le formulaire et recharger les crédits
             setRejectDialogOpen(false)
             setRejectReason("")
-            loadCredits(currentPage, statusFilter, pageSize)
+            await loadCredits(currentPage, statusFilter, pageSize)
+            toast.success("Le crédit a été rejeté avec succès")
         } catch (error) {
             console.error("Erreur lors du rejet:", error)
+            toast.error(`Échec du rejet: ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
         }
     }
 
