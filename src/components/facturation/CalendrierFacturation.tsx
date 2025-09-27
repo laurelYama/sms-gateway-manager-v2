@@ -65,9 +65,15 @@ export function CalendrierFacturation({
     const getDateStatus = (date: Date) => {
         try {
             if (!date || !(date instanceof Date) || isNaN(date.getTime())) return null
+            
+            // Vérifier que calendrier est défini et est un tableau
+            if (!Array.isArray(calendrier)) {
+                console.warn('calendrier n\'est pas un tableau valide');
+                return null;
+            }
 
             const event = calendrier.find(cal => {
-                if (!cal.dateGenerationFacture) return false
+                if (!cal?.dateGenerationFacture) return false
                 try {
                     const eventDate = new Date(cal.dateGenerationFacture)
                     return isSameDay(eventDate, date)
@@ -79,9 +85,24 @@ export function CalendrierFacturation({
 
             if (!event) return null
 
+            // Vérifier que les dates sont valides avant de les formater
+            let dateDebut = 'Date inconnue';
+            let dateFin = 'Date inconnue';
+            
+            try {
+                dateDebut = event.dateDebutConsommation 
+                    ? format(new Date(event.dateDebutConsommation), 'dd/MM/yyyy')
+                    : 'Date inconnue';
+                dateFin = event.dateFinConsommation 
+                    ? format(new Date(event.dateFinConsommation), 'dd/MM/yyyy')
+                    : 'Date inconnue';
+            } catch (e) {
+                console.error('Erreur lors du formatage des dates:', e);
+            }
+
             return {
                 status: event.statut || 'BROUILLON',
-                tooltip: `Facturation du ${format(new Date(event.dateDebutConsommation), 'dd/MM/yyyy')} au ${format(new Date(event.dateFinConsommation), 'dd/MM/yyyy')}`
+                tooltip: `Facturation du ${dateDebut} au ${dateFin}`
             }
         } catch (error) {
             console.error('Erreur dans getDateStatus:', error)
@@ -242,19 +263,19 @@ export function CalendrierFacturation({
                             {isTableExpanded ? (
                                 <>
                                     <ChevronUp className="h-3 w-3 mr-1" />
-                                    Réduire
+                                    Masquer les détails
                                 </>
                             ) : (
                                 <>
                                     <ChevronDown className="h-3 w-3 mr-1" />
-                                    Détails ({calendrier.length})
+                                    Afficher les détails ({calendrier.length})
                                 </>
                             )}
                         </Button>
                     </div>
 
                     {isTableExpanded && (
-                        <div className="overflow-x-auto">
+                        <div className="overflow-x-auto mt-4">
                             <Table className="text-xs">
                                 <TableHeader>
                                     <TableRow>
@@ -272,9 +293,9 @@ export function CalendrierFacturation({
                                             'PAYEE': { color: 'bg-purple-100 text-purple-800', label: 'Payée' },
                                             'BROUILLON': { color: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
                                             'ANNULEE': { color: 'bg-red-100 text-red-800', label: 'Annulée' }
-                                        }
+                                        };
 
-                                        const status = statusConfig[item.statut || 'BROUILLON']
+                                        const status = statusConfig[item.statut || 'BROUILLON'];
 
                                         return (
                                             <TableRow key={item.id} className="h-8 hover:bg-muted/50">
@@ -286,7 +307,7 @@ export function CalendrierFacturation({
                                                     {format(new Date(item.dateFinConsommation), 'dd MMM', { locale: fr })}
                                                 </TableCell>
                                                 <TableCell className="px-2 py-1">
-                                                    {format(new Date(item.dateGenerationFacture), 'dd MMM', { locale: fr })}
+                                                    {format(new Date(item.dateGenerationFacture), 'dd MMM yyyy', { locale: fr })}
                                                 </TableCell>
                                                 <TableCell className="px-2 py-1">
                                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${status.color}`}>
@@ -294,7 +315,7 @@ export function CalendrierFacturation({
                                                     </span>
                                                 </TableCell>
                                             </TableRow>
-                                        )
+                                        );
                                     })}
                                 </TableBody>
                             </Table>

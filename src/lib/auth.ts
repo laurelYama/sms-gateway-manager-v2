@@ -22,7 +22,9 @@ export function setToken(token: string): void {
         // Décoder et sauvegarder aussi les données utilisateur
         const userData = decodeToken(token);
         if (userData) {
+            console.log('Définition du rôle dans le localStorage:', userData.role);
             localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
+            console.log('Rôle après stockage:', JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}').role);
         }
     }
 }
@@ -30,7 +32,21 @@ export function setToken(token: string): void {
 // Récupérer le token
 export function getToken(): string | null {
     if (typeof window !== "undefined") {
-        return localStorage.getItem(TOKEN_KEY);
+        const token = localStorage.getItem(TOKEN_KEY);
+        console.group('Récupération du token:');
+        console.log('Token brut:', token ? `${token.substring(0, 20)}...` : 'null');
+        
+        if (token) {
+            try {
+                const decoded = decodeToken(token);
+                console.log('Rôle dans le token décodé:', decoded?.role);
+            } catch (e) {
+                console.error('Erreur lors du décodage du token:', e);
+            }
+        }
+        
+        console.groupEnd();
+        return token;
     }
     return null;
 }
@@ -39,7 +55,11 @@ export function getToken(): string | null {
 export function getUserData(): UserToken | null {
     if (typeof window !== "undefined") {
         const userData = localStorage.getItem(USER_DATA_KEY);
-        return userData ? JSON.parse(userData) : null;
+        if (userData) {
+            const parsedData = JSON.parse(userData);
+            console.log('Données utilisateur du localStorage:', parsedData);
+            return parsedData;
+        }
     }
     return null;
 }
@@ -58,7 +78,16 @@ export function decodeToken(token: string): UserToken | null {
         const payload = token.split('.')[1];
         const base64 = payload.replace(/\-/g, '+').replace(/\_/g, '/');
         const decoded = atob(base64);
-        return JSON.parse(decoded);
+        const userData = JSON.parse(decoded);
+        
+        // Log détaillé du rôle avant et après traitement
+        console.group('Décodage du token:');
+        console.log('Token complet décodé:', userData);
+        console.log('Rôle dans le token:', userData.role);
+        console.log('Type du rôle:', typeof userData.role);
+        console.groupEnd();
+        
+        return userData;
     } catch (error) {
         console.error("Erreur lors du décodage du token:", error);
         return null;
@@ -84,23 +113,46 @@ export function isValidToken(): boolean {
 export function useAuth() {
     const [token, setTokenState] = useState<string | null>(null);
     const [userData, setUserData] = useState<UserToken | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // Fonction pour mettre à jour les données utilisateur à partir du token
+    const updateUserDataFromToken = (token: string) => {
+        const decoded = decodeToken(token);
+        if (decoded) {
+            console.log('Mise à jour des données utilisateur depuis le token:', decoded);
+            setUserData(decoded);
+            // Mettre à jour également le stockage local pour la cohérence
+            localStorage.setItem(USER_DATA_KEY, JSON.stringify(decoded));
+            return true;
+        }
+        return false;
+    };
 
     useEffect(() => {
         const storedToken = getToken();
-        const storedUserData = getUserData();
         
-        if (storedToken && storedUserData) {
+        if (storedToken) {
+            // Toujours mettre à jour les données à partir du token pour s'assurer qu'elles sont à jour
+            const updated = updateUserDataFromToken(storedToken);
+            
+            if (!updated) {
+                // Si le décodage échoue, essayer avec les données stockées
+                const storedUserData = getUserData();
+                if (storedUserData) {
+                    console.log('Utilisation des données utilisateur stockées:', storedUserData);
+                    setUserData(storedUserData);
+                }
+            }
+            
             setTokenState(storedToken);
-            setUserData(storedUserData);
         }
+        
+        setLoading(false);
     }, []);
 
     const login = (token: string) => {
         setToken(token);
-        const userData = decodeToken(token);
-        if (userData) {
-            setUserData(userData);
-        }
+        updateUserDataFromToken(token);
     };
 
     const logout = () => {
@@ -113,6 +165,7 @@ export function useAuth() {
         token,
         userData,
         isAuthenticated: !!token && !isTokenExpired(token),
+        loading,
         login,
         logout
     };

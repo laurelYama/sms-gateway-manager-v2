@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Users, FileText, MessageSquare, Database, CreditCard } from "lucide-react"
+import { LayoutDashboard, Users, FileText, MessageSquare, Database, CreditCard, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -13,6 +13,8 @@ const menuItems = [
     { name: "Facturation", icon: FileText, href: "/dashboard/facturation" },
     { name: "Tickets", icon: MessageSquare, href: "/dashboard/tickets" },
     { name: "Référentiels", icon: Database, href: "/dashboard/referentiels" },
+    { name: "Utilisateurs", icon: Users, href: "/dashboard/users" },
+    { name: "Paramètres", icon: Settings, href: "/dashboard/parametres" },
 ]
 
 export function Sidebar() {
@@ -71,7 +73,6 @@ export function Sidebar() {
             {/* Footer de la sidebar */}
             <div className="pt-6 mt-auto border-t border-blue-400/30">
                 <div className="text-xs text-blue-200/70 text-center">
-                    <p>Version 1.2.0</p>
                     <p className="mt-1">© 2025 SMS Gateway</p>
                 </div>
             </div>

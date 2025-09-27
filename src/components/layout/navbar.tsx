@@ -13,7 +13,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Bell, LogOut, Settings, User } from "lucide-react"
-import { getUserData, clearToken, isValidToken, isTokenExpired, decodeToken } from "@/lib/auth"
+import { getUserData, clearToken, isValidToken, isTokenExpired, decodeToken, getToken } from "@/lib/auth"
+
+// Clé pour le stockage des données utilisateur dans le localStorage
+const USER_DATA_KEY = "userData";
 
 interface UserData {
     sub: string;
@@ -31,39 +34,80 @@ export function Navbar() {
     const router = useRouter()
 
     useEffect(() => {
+        // Vérifier immédiatement l'état d'authentification
         checkAuthStatus()
+        
         // Vérifier périodiquement la validité du token (toutes les minutes)
         const interval = setInterval(checkAuthStatus, 60000)
-        return () => clearInterval(interval)
-    }, [])
-
-    const checkAuthStatus = () => {
-        if (!isValidToken()) {
-            // Token expiré ou invalide
-            handleLogout()
-            return
-        }
-
-        const userData = getUserData()
-        if (userData) {
-            setUserData(userData)
-        } else {
-            // Tentative de récupération depuis le token
-            const token = localStorage.getItem("authToken")
+        
+        // Forcer une mise à jour des données utilisateur après un court délai
+        const updateUserData = () => {
+            const token = getToken();
             if (token) {
-                try {
-                    const decodedUser = decodeToken(token)
-                    if (decodedUser) {
-                        setUserData(decodedUser)
-                        // Sauvegarder pour les prochains accès
-                        localStorage.setItem("userData", JSON.stringify(decodedUser))
-                    }
-                } catch (error) {
-                    console.error("Erreur lors du décodage du token:", error)
-                    handleLogout()
+                const decoded = decodeToken(token);
+                if (decoded) {
+                    console.log('Données utilisateur mises à jour depuis le token:', decoded);
+                    setUserData(decoded);
                 }
             }
+        };
+        
+        const timeoutId = setTimeout(updateUserData, 1000);
+        
+        return () => {
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+        };
+    }, [])
+    
+    // Log des données utilisateur lorsqu'elles changent
+    useEffect(() => {
+        console.log('Données utilisateur mises à jour:', userData);
+        if (userData) {
+            console.log('Rôle utilisateur:', userData.role);
+            console.log('Toutes les propriétés:', Object.keys(userData));
         }
+    }, [userData])
+
+    const checkAuthStatus = () => {
+        console.group('Vérification du statut d\'authentification');
+        
+        const token = getToken();
+        console.log('Token récupéré:', token ? 'présent' : 'absent');
+        
+        if (!token || !isValidToken(token)) {
+            console.log('Token invalide ou expiré, déconnexion...');
+            handleLogout();
+            console.groupEnd();
+            return;
+        }
+
+        // D'abord essayer de décoder le token pour avoir les données les plus à jour
+        try {
+            const decodedUser = decodeToken(token);
+            if (decodedUser) {
+                console.log('Utilisateur décodé depuis le token:', decodedUser);
+                setUserData(decodedUser);
+                // Mettre à jour le stockage local pour la cohérence
+                localStorage.setItem(USER_DATA_KEY, JSON.stringify(decodedUser));
+                console.groupEnd();
+                return;
+            }
+        } catch (error) {
+            console.error('Erreur lors du décodage du token:', error);
+        }
+
+        // Si le décodage échoue, essayer de récupérer depuis le stockage local
+        const storedUserData = getUserData();
+        if (storedUserData) {
+            console.log('Utilisation des données utilisateur stockées:', storedUserData);
+            setUserData(storedUserData);
+        } else {
+            console.log('Aucune donnée utilisateur trouvée');
+            handleLogout();
+        }
+        
+        console.groupEnd();
     }
 
     const handleLogout = () => {
@@ -81,14 +125,46 @@ export function Navbar() {
             .slice(0, 2)
     }
 
-    const getRoleDisplay = (role: string) => {
+    const getRoleDisplay = (role: any) => {
+        console.log('Rôle reçu (type):', typeof role, 'valeur:', role);
+        
+        if (!role) return 'Utilisateur';
+        
+        // Si le rôle est un objet, essayer d'extraire la propriété 'role' ou 'authority'
+        let roleValue = role;
+        if (typeof role === 'object' && role !== null) {
+            roleValue = role.role || role.authority || role;
+        }
+        
+        // Si c'est un tableau, prendre le premier élément
+        if (Array.isArray(roleValue)) {
+            roleValue = roleValue[0];
+        }
+        
+        // Convertir en chaîne et nettoyer
+        const roleStr = String(roleValue).trim().toUpperCase();
+        
         const roles: { [key: string]: string } = {
             'ADMIN': 'Administrateur',
-            'USER': 'Utilisateur',
-            'MODERATOR': 'Modérateur',
-            'SUPER_ADMIN': 'Super Administrateur'
+            'SUPER_ADMIN': 'Super Administrateur',
+            'ROLE_SUPER_ADMIN': 'Super Administrateur',
+            'ROLE_ADMIN': 'Administrateur',
+            'ROLE_USER': 'Utilisateur'
+        };
+        
+        // Vérifier les correspondances exactes d'abord
+        if (roles[roleStr]) {
+            return roles[roleStr];
         }
-        return roles[role] || role
+        
+        // Vérifier les correspondances partielles
+        for (const [key, value] of Object.entries(roles)) {
+            if (roleStr.includes(key) || key.includes(roleStr)) {
+                return value;
+            }
+        }
+        
+        return roleStr;
     }
 
     const handleNotificationsClick = () => {
@@ -147,7 +223,10 @@ export function Navbar() {
                                     {userData?.nom || "Utilisateur"}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                    {userData?.role ? getRoleDisplay(userData.role) : "Utilisateur"}
+                                    {(() => {
+                                        console.log('userData.role avant getRoleDisplay:', userData?.role);
+                                        return userData?.role ? getRoleDisplay(userData.role) : "Utilisateur";
+                                    })()}
                                 </span>
                             </div>
                         </div>
@@ -166,10 +245,6 @@ export function Navbar() {
                         <DropdownMenuItem className="cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             <span>Profil</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer">
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Paramètres</span>
                         </DropdownMenuItem>
 
                         {/* Statut d'abonnement */}

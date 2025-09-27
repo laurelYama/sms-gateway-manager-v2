@@ -1,8 +1,15 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, MoreHorizontal } from "lucide-react"
 import { Referentiel, REFERENTIEL_CATEGORIES } from "./types"
 import { deleteReferential } from "@/lib/api/referentials"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export const columns = (
   onEdit: (referentiel: Referentiel) => void,
@@ -11,22 +18,42 @@ export const columns = (
   {
     accessorKey: "keyValue",
     header: "Clé",
+    cell: ({ row }) => {
+      const value = row.getValue("keyValue") as string
+      return value || '-'
+    },
   },
   {
     accessorKey: "value1",
     header: "Valeur 1",
+    cell: ({ row }) => {
+      const value = row.getValue("value1") as string
+      return value || '-'
+    },
   },
   {
     accessorKey: "value2",
     header: "Valeur 2",
+    cell: ({ row }) => {
+      const value = row.getValue("value2") as string
+      return value || '-'
+    },
   },
   {
     accessorKey: "value3",
     header: "Valeur 3",
+    cell: ({ row }) => {
+      const value = row.getValue("value3") as string
+      return value || '-'
+    },
   },
   {
     accessorKey: "value4",
     header: "Valeur 4",
+    cell: ({ row }) => {
+      const value = row.getValue("value4") as string
+      return value || '-'
+    },
   },
   {
     accessorKey: "refCategory",
@@ -54,25 +81,31 @@ export const columns = (
       }
 
       return (
-        <div className="flex space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(referentiel)}
-            aria-label="Modifier"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleDelete}
-            aria-label="Supprimer"
-            className="text-red-500 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Ouvrir le menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem 
+              onClick={() => onEdit(referentiel)}
+              className="cursor-pointer"
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Modifier
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleDelete}
+              className="cursor-pointer text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Supprimer
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )
     },
   },

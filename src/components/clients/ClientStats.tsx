@@ -58,15 +58,26 @@ export function ClientStats({ clients }: ClientStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Wallet className="h-4 w-4 text-blue-600" />
-            Solde Moyen
+            Solde Moyen Postpayé
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-blue-600">
-            {formatNumber(
-              clients.reduce((sum, client) => sum + client.soldeNet, 0) /
-                (clients.length || 1)
-            )} <span className="text-sm">/ mois</span>
+          <div className="space-y-1">
+            <div className="text-2xl font-bold text-blue-600">
+              {(() => {
+                const postpayeClients = clients.filter(client => client.typeCompte === 'POSTPAYE');
+                const totalPostpaye = postpayeClients.reduce((sum, client) => sum + (client.soldeNet || 0), 0);
+                const average = postpayeClients.length > 0 ? totalPostpaye / postpayeClients.length : 0;
+                return (
+                  <>
+                    {formatNumber(average)} <span className="text-sm">FCFA</span>
+                  </>
+                );
+              })()}
+            </div>
+            <p className="text-gray-500 text-xs">
+              Moyenne sur {clients.filter(c => c.typeCompte === 'POSTPAYE').length} compte(s) postpayé(s)
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Client } from "@/types/client"
-import { Building, Mail, Phone, MapPin, Briefcase, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { Building, Mail, Phone, MapPin, Briefcase, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react"
 import { ClientActions } from "./ClientActions"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import * as XLSX from 'xlsx';
 
 interface ClientListProps {
   clients: Client[]
@@ -27,12 +28,12 @@ interface ClientListProps {
   calculateMonthlyBalance?: (client: Client) => string
 }
 
-export function ClientList({ 
-  clients, 
-  onEdit, 
-  onToggleStatus, 
-  loading, 
-  getStatusBadge, 
+export function ClientList({
+  clients,
+  onEdit,
+  onToggleStatus,
+  loading,
+  getStatusBadge,
   formatCurrency,
   currentPage,
   totalPages,
@@ -41,12 +42,80 @@ export function ClientList({
   onPageChange,
   onPageSizeChange
 }: ClientListProps) {
-  
-  const startItem = clients.length > 0 ? (currentPage * pageSize) + 1 : 0
-  const endItem = Math.min((currentPage + 1) * pageSize, totalElements)
+
+  // Calculer les éléments à afficher pour la pagination côté client
+  const startIndex = currentPage * pageSize
+  const paginatedClients = clients.slice(startIndex, startIndex + pageSize)
+
+  const startItem = clients.length > 0 ? startIndex + 1 : 0
+  const endItem = Math.min(startIndex + pageSize, clients.length)
+
+  const exportToExcel = () => {
+    // Créer un nouveau classeur Excel
+    const wb = XLSX.utils.book_new();
+
+    // Préparer les données pour l'export
+    const data = [
+      ['Raison sociale', 'Secteur', 'Email', 'Téléphone', 'Ville', 'Adresse', 'Solde', 'Type de compte', 'Statut', 'Coût unitaire SMS', 'Coût total SMS']
+    ];
+
+    // Ajouter les données des clients
+    clients.forEach(client => {
+      data.push([
+        client.raisonSociale,
+        client.secteurActivite,
+        client.email,
+        client.telephone,
+        client.ville,
+        client.adresse,
+        client.soldeNet || 0,
+        client.typeCompte === 'POSTPAYE' ? 'Postpayé' : 'Prépayé',
+        client.statutCompte,
+        client.coutSmsTtc || 0,
+        client.coutSmsTtc ? (client.coutSmsTtc * (client.soldeNet || 0)) / 100 : 0
+      ]);
+    });
+
+    // Créer la feuille de calcul
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // Définir les largeurs de colonnes
+    ws['!cols'] = [
+      { wch: 30 }, // Raison sociale
+      { wch: 25 }, // Secteur
+      { wch: 30 }, // Email
+      { wch: 20 }, // Téléphone
+      { wch: 20 }, // Ville
+      { wch: 30 }, // Adresse
+      { wch: 15 }, // Solde
+      { wch: 15 }, // Type de compte
+      { wch: 15 }, // Statut
+      { wch: 20 }, // Coût unitaire
+      { wch: 20 }  // Coût total
+    ];
+
+    // Ajouter la feuille au classeur
+    XLSX.utils.book_append_sheet(wb, ws, 'Clients');
+
+    // Générer le fichier Excel avec la date dans le nom
+    const date = new Date();
+    const formattedDate = date.toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Liste_Clients_${formattedDate}.xlsx`);
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
+        <div className="flex justify-end mb-4">
+          <Button
+            onClick={exportToExcel}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Exporter en Excel
+          </Button>
+        </div>
         {[...Array(5)].map((_, i) => (
           <Skeleton key={i} className="h-20 w-full" />
         ))}
@@ -65,12 +134,13 @@ export function ClientList({
             <TableHead>Contact</TableHead>
             <TableHead>Localisation</TableHead>
             <TableHead>Solde</TableHead>
+            <TableHead>Coût SMS</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead className="w-[100px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients.map((client) => (
+          {paginatedClients.map((client) => (
             <TableRow key={client.idclients}>
               <TableCell>
                 <div className="font-medium flex items-center gap-2">
@@ -113,11 +183,18 @@ export function ClientList({
                   </span>
                 </div>
               </TableCell>
+              <TableCell className="font-medium">
+                {client.coutSmsTtc ? (
+                  formatCurrency((client.coutSmsTtc * (client.soldeNet || 0)) / 100)
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </TableCell>
               <TableCell>
                 {getStatusBadge(client.statutCompte)}
               </TableCell>
               <TableCell className="text-right">
-                <ClientActions 
+                <ClientActions
                   client={client}
                   onEdit={onEdit}
                   onToggleStatus={onToggleStatus}
@@ -129,13 +206,22 @@ export function ClientList({
       </Table>
 
       {/* Pagination */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-4 border-t">
-        <div className="text-sm text-muted-foreground">
-          {totalElements > 0 ? (
-            `${startItem}-${endItem} sur ${totalElements} client(s)`
-          ) : (
-            'Aucun client trouvé'
-          )}
+      <div className="flex items-center justify-between px-4 py-2 border-t">
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-muted-foreground">
+            {clients.length > 0 && (
+              `${startItem}-${endItem} sur ${totalElements} clients`
+            )}
+          </div>
+          <Button
+            onClick={exportToExcel}
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-1 text-sm"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exporter
+          </Button>
         </div>
 
         <div className="flex items-center space-x-6 lg:space-x-8">
@@ -157,7 +243,7 @@ export function ClientList({
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"

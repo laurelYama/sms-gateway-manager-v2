@@ -11,8 +11,8 @@ import { FacturationActions } from "@/components/facturation/FacturationActions"
 import { FacturationTable } from "@/components/facturation/FacturationTable"
 import { CalendrierButton } from "@/components/facturation/CalendrierButton"
 import { GenerationFactureDialog } from "@/components/facturation/GenerationFactureDialog"
-import { FooterConfigDialog } from "@/components/facturation/FooterConfigDialog"
-import { Facture, Exercice, Calendrier, FooterConfig, GenerationParams } from "@/components/facturation/types"
+import { ExerciceConfigDialog } from "@/components/facturation/ExerciceConfigDialog"
+import { Facture, Exercice, Calendrier, GenerationParams } from "@/components/facturation/types"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -55,11 +55,13 @@ interface FooterConfig {
 export default function FacturationPage() {
     const [factures, setFactures] = useState<Facture[]>([])
     const [calendrier, setCalendrier] = useState<Calendrier | null>(null)
+    const [availableYears, setAvailableYears] = useState<number[]>([])
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
     const [loading, setLoading] = useState<boolean>(true)
+    const [sending, setSending] = useState<Record<string, boolean>>({})
     const [generating, setGenerating] = useState<boolean>(false)
     const [generationDialogOpen, setGenerationDialogOpen] = useState<boolean>(false)
-    const [footerDialogOpen, setFooterDialogOpen] = useState<boolean>(false)
+    const [showExerciceConfig, setShowExerciceConfig] = useState(false)
     const [footerConfig, setFooterConfig] = useState<FooterConfig>({
         companyName: "",
         companyAddress: "",
@@ -69,10 +71,10 @@ export default function FacturationPage() {
         companyPhone: "",
         paymentNote: ""
     })
-  
+
     // Pagination
     const [currentPage, setCurrentPage] = useState(0)
-    const [pageSize, setPageSize] = useState(10)
+    const [pageSize, setPageSize] = useState(5)
     const [totalPages, setTotalPages] = useState(1)
     const [totalElements, setTotalElements] = useState(0)
 
@@ -105,13 +107,18 @@ export default function FacturationPage() {
 
         setLoading(true)
         try {
-            // Chargement des factures
+            // Chargement direct des factures sans vérification de santé préalable
             const response = await fetch(
-                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures', {
+                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures', 
+                {
+                    method: 'GET',
                     headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: "application/json",
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
                     },
+                    cache: 'no-store' as RequestCache
                 }
             )
 
@@ -149,27 +156,104 @@ export default function FacturationPage() {
     }, [token])
 
     const loadCalendrier = useCallback(async (annee: number) => {
-        if (!token) return
+        if (!token) return;
 
         try {
             const response = await fetch(
                 `https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${annee}/calendrier`, 
                 {
+                    method: 'GET',
                     headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: "application/json",
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
                     },
-                    cache: 'no-store'
+                    cache: 'no-store' as RequestCache
                 }
-            )
+            );
 
-            if (!response.ok) throw new Error("Erreur API calendrier")
+            if (!response.ok) {
+                // Créer un objet d'erreur de base
+                const errorInfo = {
+                    status: response.status,
+                    statusText: response.statusText || 'Pas de texte de statut',
+                    year: annee,
+                    url: response.url,
+                    error: null as any
+                };
 
-            const data = await response.json()
-            setCalendrier(data)
+                try {
+                    // Essayer de parser la réponse en JSON
+                    const contentType = response.headers?.get('content-type');
+                    if (contentType?.includes('application/json')) {
+                        errorInfo.error = await response.json();
+                    } else {
+                        const text = await response.text();
+                        errorInfo.error = { message: text };
+                    }
+                } catch (parseError) {
+                    console.warn('Erreur lors de l\'analyse de la réponse d\'erreur:', parseError);
+                    errorInfo.error = { message: 'Erreur lors de l\'analyse de la réponse' };
+                }
+                
+                // Journalisation sécurisée
+                try {
+                    console.group('Erreur API calendrier');
+                    console.log('Détails:', errorInfo);
+                    if (errorInfo.error) {
+                        console.log('Erreur détaillée:', errorInfo.error);
+                    }
+                    console.groupEnd();
+                } catch (logError) {
+                    console.error('Erreur lors de la journalisation:', logError);
+                    console.error('Erreur API calendrier (brute):', JSON.stringify(errorInfo, null, 2));
+                }
+                
+                // Gestion spécifique pour l'erreur 409 (Année fiscale non trouvée ou non ouverte)
+                if (response.status === 409) {
+                    setCalendrier([]);
+                    
+                    // Vérifier si l'année demandée est dans le futur
+                    const currentYear = new Date().getFullYear();
+                    if (annee > currentYear) {
+                        // Ne pas afficher de toast pour les années futures
+                        // car cela pourrait être un chargement automatique
+                        console.log(`L'année ${annee} est dans le futur, chargement ignoré`);
+                    } else {
+                        // Pour les années passées ou actuelles, afficher un avertissement
+                        toast.warning(`L'année fiscale ${annee} n'est pas configurée ou n'est pas ouverte.`, {
+                            id: `calendrier-${annee}-warning` // Éviter les doublons
+                        });
+                    }
+                    return [];
+                }
+
+                // Pour les autres erreurs, lancer une exception avec un message clair
+                const errorMessage = errorInfo.error?.message || 
+                                  `Erreur ${response.status} lors du chargement du calendrier pour l'année ${annee}`;
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            
+            // S'assurer que les données sont un tableau
+            if (!Array.isArray(data)) {
+                console.warn('La réponse du calendrier n\'est pas un tableau:', data);
+                setCalendrier([]);
+                toast.warning("Format de données inattendu pour le calendrier.");
+                return;
+            }
+            
+            setCalendrier(data);
+            
         } catch (error) {
-            console.error("Erreur lors du chargement du calendrier:", error)
-            toast.error("Erreur lors du chargement du calendrier")
+            console.error("Erreur lors du chargement du calendrier:", error);
+            
+            // Ne pas afficher de toast pour les erreurs 409 déjà gérées
+            if (!(error instanceof Error && error.message.includes('409'))) {
+                toast.error("Erreur lors du chargement du calendrier. Veuillez réessayer.");
+            }
         }
     }, [token])
 
@@ -177,13 +261,19 @@ export default function FacturationPage() {
         if (!token) return
 
         try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/v1/footer", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
-                },
-                cache: 'no-store'
-            })
+            const response = await fetch(
+                "https://api-smsgateway.solutech-one.com/api/v1/footer", 
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    cache: 'no-store' as RequestCache
+                }
+            )
 
             if (response.ok) {
                 const data = await response.json()
@@ -195,176 +285,272 @@ export default function FacturationPage() {
         }
     }, [token])
 
-    // Chargement initial des données
-    useEffect(() => {
-        if (token) {
-            loadFactures()
-            loadCalendrier(selectedYear)
-            loadFooterConfig()
+    // Chargement des années fiscales disponibles
+    const loadAvailableYears = useCallback(async () => {
+        if (!token) return [];
+
+        try {
+            const response = await fetch(
+                'https://api-smsgateway.solutech-one.com/api/V1/billing/exercices', 
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    cache: 'no-store' as RequestCache
+                }
+            );
+
+            let years: number[] = [];
+            const currentYear = new Date().getFullYear();
+            
+            if (response.ok) {
+                try {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        // Filtrer pour ne garder que les années ouvertes et les trier par ordre décroissant
+                        years = data
+                            .filter((ex: Exercice) => ex.statut === 'OUVERT')
+                            .map((ex: Exercice) => ex.annee)
+                            .sort((a: number, b: number) => b - a);
+                    }
+                } catch (parseError) {
+                    console.warn("Erreur lors de l'analyse de la réponse des exercices:", parseError);
+                }
+            } else {
+                console.warn(`Erreur ${response.status} lors du chargement des exercices`);
+            }
+
+            // Si aucune année n'est disponible, on utilise une valeur par défaut
+            if (years.length === 0) {
+                years = [currentYear - 1, currentYear, currentYear + 1];
+                console.warn("Utilisation des années par défaut:", years);
+            }
+
+            setAvailableYears(years);
+
+            // Si l'année actuellement sélectionnée n'est pas dans la liste des années disponibles,
+            // on sélectionne la première année disponible
+            if (years.length > 0 && !years.includes(selectedYear)) {
+                const newYear = years[0];
+                console.log(`Changement d'année de ${selectedYear} à ${newYear} (non disponible)`);
+                setSelectedYear(newYear);
+            }
+
+            return years;
+        } catch (error) {
+            console.error("Erreur lors du chargement des années fiscales:", error);
+            // En cas d'erreur, on utilise les 3 dernières années comme solution de repli
+            const currentYear = new Date().getFullYear();
+            const fallbackYears = [currentYear - 1, currentYear, currentYear + 1];
+            setAvailableYears(fallbackYears);
+            return fallbackYears;
         }
-    }, [token, loadFactures, loadCalendrier, loadFooterConfig, selectedYear])
+    }, [token, selectedYear]);
 
-    // Mise à jour de la pagination lorsque les données changent
+    // Charger les données initiales
     useEffect(() => {
-        setTotalPages(Math.ceil(factures.length / pageSize) || 1)
-        setTotalElements(factures.length)
-    }, [factures, pageSize])
+        if (!token) return;
+        
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                // Charger d'abord les années disponibles
+                const years = await loadAvailableYears();
+                
+                // Si on a des années disponibles et que l'année sélectionnée n'est pas dans la liste
+                if (years.length > 0) {
+                    if (!years.includes(selectedYear)) {
+                        // Sélectionner automatiquement la première année disponible
+                        setSelectedYear(years[0]);
+                    }
+                    
+                    // Charger les factures et le calendrier en parallèle
+                    await Promise.all([
+                        loadFactures().catch(error => {
+                            console.error('Erreur lors du chargement des factures:', error);
+                            toast.error('Erreur lors du chargement des factures');
+                        }),
+                        loadCalendrier(selectedYear).catch(error => {
+                            // Ne rien faire ici car loadCalendrier gère déjà les erreurs
+                            // et affiche les messages appropriés
+                            console.error('Erreur lors du chargement du calendrier:', error);
+                        })
+                    ]);
+                } else {
+                    // Aucune année disponible, charger uniquement les factures
+                    await loadFactures().catch(error => {
+                        console.error('Erreur lors du chargement des factures:', error);
+                        toast.error('Erreur lors du chargement des factures');
+                    });
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des données initiales:', error);
+                toast.error('Erreur lors du chargement des données');
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadInitialData();
+    }, [token, loadAvailableYears, loadFactures, loadCalendrier, selectedYear]);
 
-    // Calcul des factures à afficher pour la page courante
+    // Gestion du changement d'année
+    const handleYearChange = (year: number) => {
+        setSelectedYear(year);
+        loadCalendrier(year).catch(error => {
+            console.error('Erreur lors du chargement du calendrier:', error);
+        });
+    };
+
+    // Calcul des factures paginées
     const paginatedFactures = factures.slice(
         currentPage * pageSize,
         (currentPage + 1) * pageSize
-    )
+    );
 
-    const handleGenerateInvoices = useCallback(async (params: GenerationParams) => {
-        if (!token) return
-
-        setGenerating(true)
+    // Gestion du téléchargement de toutes les factures
+    const handleDownloadAll = async () => {
+        if (!token) return;
+        
         try {
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/billing/generer?annee=${params.annee}&mois=${params.mois}`, 
+                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures/export', 
                 {
-                    method: "POST",
+                    method: 'GET',
                     headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: "application/json",
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/zip',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
                     },
+                    cache: 'no-store' as RequestCache
                 }
-            )
+            );
 
-            if (!response.ok) throw new Error("Erreur lors de la génération des factures")
+            if (!response.ok) {
+                throw new Error('Erreur lors du téléchargement des factures');
+            }
 
-            const result = await response.json()
-            toast.success(
-                `Factures générées avec succès: ${result.generated} factures créées`
-            )
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `factures-${new Date().toISOString().split('T')[0]}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
             
-            // Recharger les données
-            await loadFactures()
-            setGenerationDialogOpen(false)
+            toast.success('Téléchargement des factures réussi');
         } catch (error) {
-            console.error("Erreur lors de la génération des factures:", error)
-            toast.error("Erreur lors de la génération des factures")
-        } finally {
-            setGenerating(false)
+            console.error('Erreur lors du téléchargement des factures:', error);
+            toast.error('Erreur lors du téléchargement des factures');
         }
-    }, [token, loadFactures])
+    };
 
-    const handleDownloadAll = useCallback(async () => {
-        if (!token) return
-            
-        toast.info("Téléchargement de toutes les factures en cours...")
-            
-        // Implémentez la logique de téléchargement groupé ici
-        // Cette fonctionnalité pourrait nécessiter une implémentation côté serveur
-        toast.warning("Fonctionnalité de téléchargement groupé non implémentée")
-    }, [token])
+    // Gestion de la prévisualisation d'une facture
+    const handlePreviewInvoice = (factureId: string) => {
+        window.open(
+            `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/preview`,
+            '_blank'
+        );
+    };
 
-    const handleSendAll = useCallback(async () => {
-        if (!token) return
-            
-        toast.info("Envoi de toutes les factures en cours...")
-            
-        // Implémentez la logique d'envoi groupé ici
-        // Cette fonctionnalité pourrait nécessiter une implémentation côté serveur
-        toast.warning("Fonctionnalité d'envoi groupé non implémentée")
-    }, [token])
-
-    const handlePreviewInvoice = useCallback(async (factureId: string) => {
-        if (!token) return
-
+    // Gestion du téléchargement d'une facture
+    const handleDownloadInvoice = async (factureId: string) => {
+        if (!token) return;
+        
         try {
-            const pdfUrl = `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/pdf`
-
-            const response = await fetch(pdfUrl, {
-                headers: { Authorization: `Bearer ${token}` },
-                cache: 'no-store'
-            })
-
-            if (!response.ok) throw new Error("Erreur d'accès au PDF")
-
-            const blob = await response.blob()
-            const blobUrl = URL.createObjectURL(blob)
-            window.open(blobUrl, "_blank")
+            setSending(prev => ({ ...prev, [factureId]: true }));
             
-            // Nettoyer l'URL après utilisation
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
-        } catch (error) {
-            console.error("Erreur lors de la prévisualisation de la facture:", error)
-            toast.error("Impossible d'accéder au PDF de la facture")
-        }
-    }, [token])
-
-    const handleDownloadInvoice = useCallback(async (factureId: string) => {
-        if (!token) return
-
-        try {
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/pdf`, 
+                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/download`,
                 {
-                    headers: { Authorization: `Bearer ${token}` },
-                    cache: 'no-store'
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/pdf',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    cache: 'no-store' as RequestCache
                 }
-            )
+            );
 
-            if (!response.ok) throw new Error("Erreur de téléchargement du PDF")
+            if (!response.ok) {
+                throw new Error('Erreur lors du téléchargement de la facture');
+            }
 
-            const blob = await response.blob()
-            const blobUrl = URL.createObjectURL(blob)
-
-            const link = document.createElement('a')
-            link.href = blobUrl
-            link.download = `facture-${factureId}.pdf`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-
-            // Nettoyage
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 100)
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `facture-${factureId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            toast.success('Téléchargement de la facture réussi');
         } catch (error) {
-            console.error("Erreur lors du téléchargement de la facture:", error)
-            toast.error("Erreur lors du téléchargement de la facture")
+            console.error('Erreur lors du téléchargement de la facture:', error);
+            toast.error('Erreur lors du téléchargement de la facture');
+        } finally {
+            setSending(prev => ({ ...prev, [factureId]: false }));
         }
-    }, [token])
+    };
 
-    const handleSaveFooterConfig = useCallback(async (config: FooterConfig) => {
-        if (!token) return
-
+    // Gestion de l'envoi d'une facture
+    const handleSendInvoice = async (factureId: string) => {
+        if (!token) return;
+        
         try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/v1/footer", {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify(config)
-            })
+            setSending(prev => ({ ...prev, [factureId]: true }));
+            
+            const response = await fetch(
+                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/send`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    cache: 'no-store' as RequestCache
+                }
+            );
 
-            if (!response.ok) throw new Error("Erreur lors de la sauvegarde de la configuration")
-
-            setFooterConfig(config)
-            setFooterDialogOpen(false)
-            toast.success("Configuration du pied de page enregistrée avec succès")
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Erreur lors de l\'envoi de la facture');
+            }
+            
+            toast.success('Facture envoyée avec succès');
+            
+            // Recharger les factures pour mettre à jour l'état
+            await loadFactures();
         } catch (error) {
-            console.error("Erreur lors de l'enregistrement de la configuration:", error)
-            toast.error("Erreur lors de l'enregistrement de la configuration")
+            console.error('Erreur lors de l\'envoi de la facture:', error);
+            toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'envoi de la facture');
+        } finally {
+            setSending(prev => ({ ...prev, [factureId]: false }));
         }
-    }, [token])
-
-    const handleYearChange = useCallback((year: number) => {
-        setSelectedYear(year)
-    }, [])
+    };
 
     if (loading) {
         return (
             <div className="p-6 flex items-center justify-center h-64">
                 <div className="text-center">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-                    <p>Chargement des factures...</p>
+                    <p>Chargement des données...</p>
                 </div>
             </div>
-        )
+        );
     }
 
     return (
@@ -373,15 +559,14 @@ export default function FacturationPage() {
                 <div className="flex justify-between items-start gap-4">
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Gestion de la Facturation</h1>
-                        <p className="text-muted-foreground">
-                            Générez et gérez les factures mensuelles de vos clients
-                        </p>
+                        <p className="text-muted-foreground">Compte postpayé</p>
                     </div>
                     <CalendrierButton 
-                        calendrier={calendrier}
+                        calendrier={calendrier || []}
                         selectedYear={selectedYear}
                         onYearChange={handleYearChange}
                         loading={loading}
+                        availableYears={availableYears}
                     />
                 </div>
                 
@@ -389,8 +574,7 @@ export default function FacturationPage() {
                     <FacturationActions 
                         onGenerate={() => setGenerationDialogOpen(true)}
                         onDownloadAll={handleDownloadAll}
-                        onSendAll={handleSendAll}
-                        onConfigureFooter={() => setFooterDialogOpen(true)}
+                        onConfigureFooter={() => setShowExerciceConfig(true)}
                         loading={loading}
                     />
                     
@@ -398,8 +582,9 @@ export default function FacturationPage() {
                         factures={paginatedFactures}
                         onPreview={handlePreviewInvoice}
                         onDownload={handleDownloadInvoice}
-                        onSend={handleSendAll}
+                        onSend={handleSendInvoice}
                         loading={loading}
+                        sending={sending}
                     />
                     
                     {/* Pagination */}
@@ -418,8 +603,8 @@ export default function FacturationPage() {
                                 <Select
                                     value={`${pageSize}`}
                                     onValueChange={(value) => {
-                                        setPageSize(Number(value))
-                                        setCurrentPage(0) // Reset à la première page lors du changement de taille
+                                        setPageSize(Number(value));
+                                        setCurrentPage(0); // Reset à la première page lors du changement de taille
                                     }}
                                 >
                                     <SelectTrigger className="h-8 w-[70px]">
@@ -483,20 +668,96 @@ export default function FacturationPage() {
                 <GenerationFactureDialog 
                     open={generationDialogOpen}
                     onOpenChange={setGenerationDialogOpen}
-                    onSubmit={handleGenerateInvoices}
+                    onSubmit={async (values) => {
+                        try {
+                            setGenerating(true);
+                            const response = await fetch(
+                                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures/generate',
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json',
+                                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                        'Pragma': 'no-cache'
+                                    },
+                                    body: JSON.stringify({
+                                        annee: values.annee,
+                                        mois: values.mois
+                                    }),
+                                    cache: 'no-store' as RequestCache
+                                }
+                            );
+
+                            if (!response.ok) {
+                                const errorData = await response.json().catch(() => ({}));
+                                throw new Error(errorData.message || 'Erreur lors de la génération des factures');
+                            }
+
+                            const result = await response.json();
+                            toast.success(`${result.generated} facture(s) générée(s) avec succès`);
+                            
+                            // Recharger les données
+                            await Promise.all([
+                                loadFactures(),
+                                loadCalendrier(selectedYear)
+                            ]);
+                            
+                            setGenerationDialogOpen(false);
+                        } catch (error) {
+                            console.error('Erreur lors de la génération des factures:', error);
+                            toast.error(error instanceof Error ? error.message : 'Erreur lors de la génération des factures');
+                        } finally {
+                            setGenerating(false);
+                        }
+                    }}
                     loading={generating}
                     defaultValues={{
-                        annee: new Date().getFullYear(),
+                        annee: selectedYear,
                         mois: new Date().getMonth() + 1
                     }}
                 />
 
-                <FooterConfigDialog
-                    open={footerDialogOpen}
-                    onOpenChange={setFooterDialogOpen}
-                    onSubmit={handleSaveFooterConfig}
-                    defaultValues={footerConfig}
-                    loading={false}
+                <ExerciceConfigDialog 
+                    open={showExerciceConfig}
+                    onOpenChange={setShowExerciceConfig}
+                    onSave={async (values) => {
+                        try {
+                            const response = await fetch(
+                                'https://api-smsgateway.solutech-one.com/api/V1/billing/exercices',
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Accept': 'application/json',
+                                        'Content-Type': 'application/json',
+                                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                        'Pragma': 'no-cache'
+                                    },
+                                    body: JSON.stringify({
+                                        annee: values.annee,
+                                        statut: 'OUVERT'
+                                    }),
+                                    cache: 'no-store' as RequestCache
+                                }
+                            );
+
+                            if (!response.ok) {
+                                const errorData = await response.json().catch(() => ({}));
+                                throw new Error(errorData.message || 'Erreur lors de la création de l\'exercice');
+                            }
+
+                            toast.success('Exercice créé avec succès');
+                            
+                            // Recharger les années disponibles
+                            await loadAvailableYears();
+                            setShowExerciceConfig(false);
+                        } catch (error) {
+                            console.error('Erreur lors de la création de l\'exercice:', error);
+                            toast.error(error instanceof Error ? error.message : 'Erreur lors de la création de l\'exercice');
+                        }
+                    }}
                 />
             </div>
         </div>

@@ -46,35 +46,35 @@ export default function ClientsPage() {
     })
     const token = getToken()
 
-    const loadClients = useCallback(async (page = currentPage, size = pageSize) => {
-        if (!token) {
-            setLoading(false)
+    const loadClients = useCallback(async (page = 1, size = pageSize) => {
+        const currentToken = getToken()
+        if (!currentToken) {
             return
         }
 
         setLoading(true)
 
         try {
-            const url = new URL("https://api-smsgateway.solutech-one.com/api/V1/clients")
-            url.searchParams.append('page', page.toString())
+            // Construire l'URL avec les paramètres de pagination
+            const url = new URL('https://api-smsgateway.solutech-one.com/api/V1/clients')
+            url.searchParams.append('page', (page - 1).toString()) // L'API attend une pagination 0-based
             url.searchParams.append('size', size.toString())
 
+            // Ajouter le filtre de statut si défini
             if (statusFilter !== 'ALL') {
                 url.searchParams.append('statutCompte', statusFilter)
             }
 
+            // Ajouter la recherche si définie
             if (searchQuery) {
                 url.searchParams.append('search', searchQuery)
             }
 
-            console.log('Chargement des clients depuis:', url.toString())
-
             const response = await fetch(url.toString(), {
                 headers: {
-                    Authorization: `Bearer ${token}`,
-                    Accept: "application/json",
+                    Authorization: `Bearer ${currentToken}`,
+                    Accept: 'application/json',
                 },
-                cache: 'no-store'
             })
 
             if (!response.ok) {
@@ -86,14 +86,32 @@ export default function ClientsPage() {
             const data = await response.json()
             console.log('Réponse API brute:', data)
 
-            const clientsData = Array.isArray(data)
-                ? [...data].sort((a, b) => parseInt(b.idclients) - parseInt(a.idclients))
-                : []
+            // Vérifier si la réponse est un tableau
+            if (!Array.isArray(data)) {
+                console.error('La réponse de l\'API n\'est pas un tableau:', data)
+                throw new Error('Format de réponse inattendu de l\'API')
+            }
 
-            const totalElements = clientsData.length
-            const totalPages = Math.ceil(totalElements / pageSize) || 1
+            // Trier les clients par ID décroissant
+            const sortedClients = [...data].sort((a, b) => 
+                parseInt(b.idclients) - parseInt(a.idclients)
+            )
+            
+            // Mettre à jour la liste complète des clients
+            setClients(sortedClients)
+            
+            // Calculer la pagination sur la liste complète
+            const totalElements = sortedClients.length
+            const totalPages = Math.ceil(totalElements / size)
+            
+            console.log('Données traitées:', {
+                nbClients: sortedClients.length,
+                totalElements,
+                totalPages,
+                page
+            })
 
-            setClients(clientsData)
+            // Mettre à jour les états de pagination
             setTotalPages(totalPages)
             setTotalElements(totalElements)
         } catch (error) {
@@ -196,21 +214,150 @@ export default function ClientsPage() {
 
     const openEditDialog = (client: Client) => {
         setCurrentClient(client)
-        setEditForm({
-            raisonSociale: client.raisonSociale,
-            secteurActivite: client.secteurActivite,
-            ville: client.ville,
-            adresse: client.adresse,
-            telephone: client.telephone,
-            email: client.email,
-            nif: client.nif,
-            rccm: client.rccm,
-            emetteur: client.emetteur || "",
-            coutSmsTtc: client.coutSmsTtc || 25,
-            typeCompte: client.typeCompte || "POSTPAYE",
-            indicatifPays: client.indicatifPays || "+241",
-            telephoneAvecIndicatif: client.telephoneAvecIndicatif || ""
-        })
+        // Trouver l'indicatif du pays dans la liste des pays chargés
+    // Fonction pour extraire l'indicatif et le numéro
+    const extractPhoneNumber = (phoneWithCode: string) => {
+      if (!phoneWithCode) return { indicatif: pays[0]?.value1 || "France", numero: "" };
+      
+      console.log('Extraction du numéro - Entrée:', phoneWithCode);
+      
+      // Nettoyer le numéro (supprimer les espaces, tirets, etc.)
+      const cleaned = phoneWithCode.replace(/[^\d+]/g, '');
+      console.log('Numéro nettoyé:', cleaned);
+      
+      // Vérifier d'abord le format +33 (France)
+      if (cleaned.startsWith('+33') || cleaned.startsWith('0033')) {
+        const codePays = cleaned.startsWith('+') ? '+33' : '0033';
+        const numero = cleaned.substring(codePays.length);
+        
+        // Trouver la France dans la liste des pays
+        const france = pays.find(p => p.value1 === 'France' || p.value2 === '+33');
+        
+        console.log('Numéro français détecté:', { 
+          codePays, 
+          numero,
+          pays: france 
+        });
+        
+        return {
+          indicatif: france?.value1 || 'France',
+          numero: numero
+        };
+      }
+      
+      // Pour les autres pays, essayer de trouver un indicatif correspondant
+      for (const p of pays) {
+        if (!p.value2) continue;
+        
+        // Nettoyer l'indicatif du pays pour la comparaison
+        const codePays = p.value2.replace(/[^\d+]/g, '');
+        
+        // Vérifier si le numéro commence par l'indicatif du pays
+        if (cleaned.startsWith(codePays)) {
+          console.log('Indicatif trouvé:', { 
+            pays: p.value1, 
+            indicatif: p.value2, 
+            numero: cleaned.substring(codePays.length) 
+          });
+          
+          return {
+            indicatif: p.value1, // Utiliser value1 comme identifiant du pays
+            numero: cleaned.substring(codePays.length)
+          };
+        }
+      }
+      
+      // Si le numéro commence par + mais qu'aucun pays n'a été trouvé
+      if (cleaned.startsWith('+')) {
+        console.log('Aucun pays trouvé pour l\'indicatif, utilisation de l\'indicatif tel quel');
+        // Essayer d'extraire les 2-3 premiers chiffres après le +
+        const codePaysMatch = cleaned.match(/^\+([0-9]{1,3})/);
+        if (codePaysMatch) {
+          // Chercher un pays avec ce code
+          const code = `+${codePaysMatch[1]}`;
+          const paysTrouve = pays.find(p => p.value2 === code);
+          
+          return {
+            indicatif: paysTrouve?.value1 || code,
+            numero: cleaned.substring(codePaysMatch[0].length)
+          };
+        }
+      }
+      
+      // Si le numéro commence par 00 (format international)
+      if (cleaned.startsWith('00')) {
+        console.log('Format 00 détecté, conversion en +');
+        const codePaysMatch = cleaned.match(/^00([0-9]{1,3})/);
+        if (codePaysMatch) {
+          const code = `+${codePaysMatch[1]}`;
+          const paysTrouve = pays.find(p => p.value2 === code);
+          
+          return {
+            indicatif: paysTrouve?.value1 || code,
+            numero: cleaned.substring(codePaysMatch[0].length)
+          };
+        }
+      }
+      
+      // Si aucun indicatif n'est trouvé, considérer le numéro tel quel
+      console.log('Aucun indicatif trouvé, utilisation du numéro tel quel');
+      return {
+        indicatif: pays[0]?.value1 || "France",
+        numero: cleaned
+      };
+    };
+    
+    // Extraire l'indicatif et le numéro
+    const { indicatif, numero } = extractPhoneNumber(client.telephoneAvecIndicatif || client.telephone || "");
+    
+    console.log('Extraction du numéro:', { telephoneAvecIndicatif: client.telephoneAvecIndicatif, telephone: client.telephone, indicatif, numero });
+    
+    // Trouver le pays correspondant à l'indicatif
+    console.log('Recherche du pays pour l\'indicatif:', indicatif);
+    
+    // D'abord essayer de trouver par value1 (nom du pays)
+    let paysClient = pays.find(p => p.value1 === indicatif);
+    
+    // Si pas trouvé, essayer de trouver par value2 (indicatif avec +)
+    if (!paysClient) {
+      console.log('Pays non trouvé par value1, recherche par value2');
+      paysClient = pays.find(p => p.value2 === indicatif);
+    }
+    
+    // Si toujours pas trouvé, essayer de trouver par indicatif numérique
+    if (!paysClient) {
+      console.log('Pays non trouvé par value2, recherche par indicatif numérique');
+      const indicatifNumerique = indicatif.replace(/\D/g, '');
+      paysClient = pays.find(p => p.value2.replace(/\D/g, '') === indicatifNumerique);
+    }
+    
+    // Si toujours pas trouvé, prendre le premier pays
+    if (!paysClient && pays.length > 0) {
+      console.log('Aucun pays trouvé, utilisation du premier pays disponible');
+      paysClient = pays[0];
+    }
+    
+    console.log('Pays trouvé pour l\'indicatif', indicatif, ':', paysClient);
+    
+    // Préparer les données du formulaire
+    const formData = {
+      raisonSociale: client.raisonSociale,
+      secteurActivite: client.secteurActivite,
+      ville: client.ville,
+      adresse: client.adresse,
+      telephone: numero,
+      email: client.email,
+      nif: client.nif,
+      rccm: client.rccm,
+      emetteur: client.emetteur || "",
+      coutSmsTtc: client.coutSmsTtc || 25,
+      typeCompte: client.typeCompte || "POSTPAYE",
+      indicatifPays: paysClient?.value1 || pays[0]?.value1 || "", // Utiliser value1 comme identifiant du pays
+      telephoneAvecIndicatif: paysClient?.value2 && numero ? `${paysClient.value2}${numero}` : ""
+    };
+    
+    console.log('Données du formulaire d\'édition:', formData);
+    setEditForm(formData);
         setIsEditDialogOpen(true)
     }
 
@@ -281,7 +428,23 @@ export default function ClientsPage() {
         if (!currentClient) return
 
         try {
+            // Trouver le pays sélectionné
+            const paysSelectionne = pays.find(p => p.value1 === formData.indicatifPays);
+            
+            // Préparer les données à envoyer
+            const dataToSend = {
+                ...formData,
+                // Construire le numéro complet avec l'indicatif
+                telephoneAvecIndicatif: paysSelectionne?.value2 
+                    ? `${paysSelectionne.value2}${formData.telephone.replace(/\D/g, '')}`
+                    : formData.telephone
+            };
+            
+            console.log('Données à envoyer à l\'API:', dataToSend);
+
             const url = `https://api-smsgateway.solutech-one.com/api/V1/clients/${currentClient.idclients}`
+            console.log('Envoi des données de mise à jour:', dataToSend)
+            
             const response = await fetch(url, {
                 method: "PATCH",
                 headers: {
@@ -289,7 +452,7 @@ export default function ClientsPage() {
                     Accept: "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(dataToSend)
             })
 
             if (!response.ok) throw new Error("Erreur lors de la modification")
@@ -311,6 +474,25 @@ export default function ClientsPage() {
 
     const handleCreate = async (formData: CreateClientForm) => {
         try {
+            // Préparer les données pour l'API
+            const dataToSend = {
+                raisonSociale: formData.raisonSociale,
+                secteurActivite: formData.secteurActivite,
+                ville: formData.ville,
+                adresse: formData.adresse,
+                telephone: formData.telephoneAvecIndicatif, // Utiliser le numéro avec l'indicatif
+                email: formData.email,
+                nif: formData.nif,
+                rccm: formData.rccm,
+                emetteur: formData.emetteur,
+                coutSmsTtc: formData.coutSmsTtc,
+                typeCompte: formData.typeCompte,
+                indicatifPays: formData.indicatifPays,
+                telephoneAvecIndicatif: formData.telephoneAvecIndicatif
+            };
+
+            console.log('Données envoyées à l\'API:', dataToSend);
+
             const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/clients", {
                 method: "POST",
                 headers: {
@@ -318,10 +500,14 @@ export default function ClientsPage() {
                     Accept: "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(dataToSend)
             })
 
-            if (!response.ok) throw new Error("Erreur lors de la création")
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Erreur API:', errorData);
+                throw new Error(errorData.message || "Erreur lors de la création");
+            }
 
             const newClient = await response.json()
             setClients(prevClients => [...prevClients, newClient])
@@ -329,7 +515,7 @@ export default function ClientsPage() {
             toast.success("Client créé avec succès")
         } catch (error) {
             console.error("Erreur lors de la création du client:", error)
-            toast.error("Une erreur s'est produite lors de la création")
+            toast.error(error instanceof Error ? error.message : "Une erreur s'est produite lors de la création")
         }
     }
 
@@ -368,8 +554,8 @@ export default function ClientsPage() {
                     onEdit={openEditDialog}
                     onToggleStatus={toggleClientStatus}
                     currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalElements={totalElements}
+                    totalPages={Math.ceil(filteredClients.length / pageSize)}
+                    totalElements={filteredClients.length}
                     pageSize={pageSize}
                     onPageChange={handlePageChange}
                     onPageSizeChange={handlePageSizeChange}
@@ -379,9 +565,6 @@ export default function ClientsPage() {
                         </Badge>
                     )}
                     formatCurrency={formatCurrency}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    onAddClient={openCreateDialog}
                     calculateMonthlyBalance={calculateMonthlyBalance}
                 />
             </div>

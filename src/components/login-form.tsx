@@ -49,13 +49,21 @@ export function LoginForm() {
                 // Connexion réussie
                 setSuccessMessage("Connexion réussie!")
 
-                // Stocker le token si nécessaire
+                // Stocker le token et les données utilisateur
                 if (data.token) {
-                    localStorage.setItem("authToken", data.token)
-                    // Stocker également les informations utilisateur si disponibles
-                    if (data.user) {
-                        localStorage.setItem("userData", JSON.stringify(data.user))
-                    }
+                    // Utiliser la fonction setToken pour gérer correctement le stockage
+                    import("@/lib/auth").then(({ setToken }) => {
+                        setToken(data.token);
+                        
+                        // Si le backend renvoie les données utilisateur directement, les stocker aussi
+                        if (data.user) {
+                            localStorage.setItem("userData", JSON.stringify(data.user));
+                        }
+                        
+                        console.log('Token défini, données utilisateur:', data.user);
+                    }).catch(error => {
+                        console.error('Erreur lors de l\'import de setToken:', error);
+                    });
                 }
 
                 // Attendre un peu pour montrer le message de succès

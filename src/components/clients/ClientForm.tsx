@@ -25,21 +25,55 @@ interface ClientFormProps {
 
 export function ClientForm({ mode, initialData, onSave, onClose, villes, secteurs, pays }: ClientFormProps) {
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState<CreateClientForm>({
-    raisonSociale: initialData.raisonSociale || "",
-    secteurActivite: initialData.secteurActivite || "",
-    ville: initialData.ville || "",
-    adresse: initialData.adresse || "",
-    telephone: initialData.telephone || "",
-    email: initialData.email || "",
-    nif: initialData.nif || "",
-    rccm: initialData.rccm || "",
-    emetteur: initialData.emetteur || "",
-    coutSmsTtc: initialData.coutSmsTtc || 25,
-    typeCompte: initialData.typeCompte || "POSTPAYE",
-    indicatifPays: initialData.indicatifPays || "+241",
-    telephoneAvecIndicatif: initialData.telephoneAvecIndicatif || ""
-  })
+  // Fonction pour initialiser les données du formulaire
+  const getInitialFormData = () => {
+    console.log('Initialisation du formulaire avec les données:', initialData);
+    
+    // Trouver le pays par défaut
+    const paysParDefaut = pays.length > 0 ? pays[0] : null;
+    
+    // Si on est en mode édition et qu'on a un indicatifPays, trouver le pays correspondant
+    let indicatifPays = initialData.indicatifPays;
+    let telephone = initialData.telephone || "";
+    let telephoneAvecIndicatif = initialData.telephoneAvecIndicatif || "";
+    
+    // Si on a un numéro de téléphone mais pas d'indicatif, essayer de l'extraire
+    if ((!indicatifPays || !telephoneAvecIndicatif) && telephone) {
+      // Si le numéro commence par un +, c'est qu'il contient déjà l'indicatif
+      if (telephone.startsWith('+')) {
+        telephoneAvecIndicatif = telephone;
+        // Trouver le pays correspondant à l'indicatif
+        const indicatifNumerique = telephone.match(/^\+([0-9]+)/)?.[1];
+        if (indicatifNumerique) {
+          const paysTrouve = pays.find(p => 
+            p.value2 && p.value2.replace(/\D/g, '') === indicatifNumerique
+          );
+          if (paysTrouve) {
+            indicatifPays = paysTrouve.value1;
+            telephone = telephone.replace(new RegExp(`^\\+${indicatifNumerique}`), '');
+          }
+        }
+      }
+    }
+    
+    return {
+      raisonSociale: initialData.raisonSociale || "",
+      secteurActivite: initialData.secteurActivite || "",
+      ville: initialData.ville || "",
+      adresse: initialData.adresse || "",
+      telephone: telephone,
+      email: initialData.email || "",
+      nif: initialData.nif || "",
+      rccm: initialData.rccm || "",
+      emetteur: initialData.emetteur || "",
+      coutSmsTtc: initialData.coutSmsTtc || 25,
+      typeCompte: mode === 'edit' ? initialData.typeCompte : (initialData.typeCompte || "POSTPAYE"),
+      indicatifPays: indicatifPays || (paysParDefaut?.value1 || ""),
+      telephoneAvecIndicatif: telephoneAvecIndicatif || ""
+    };
+  };
+  
+  const [formData, setFormData] = useState<CreateClientForm>(getInitialFormData());
 
   const handleNext = () => {
     if (step === 1) {
@@ -53,18 +87,182 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
 
   const handlePrevious = () => setStep(step - 1)
 
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
   const handleSubmit = () => {
-    if (step === 2 && !formData.emetteur) {
-      toast.error("Veuillez renseigner l'émetteur")
-      return
+    // Validation de l'email
+    if (!validateEmail(formData.email)) {
+      toast.error("Veuillez entrer une adresse email valide");
+      return;
     }
-    onSave(formData)
+
+    // Validation de l'émetteur (si on est à l'étape 2)
+    if (step === 2 && !formData.emetteur) {
+      toast.error("Veuillez renseigner l'émetteur");
+      return;
+    }
+    
+    // Validation du numéro de téléphone
+    if (!formData.telephoneAvecIndicatif) {
+      toast.error("Veuillez renseigner un numéro de téléphone");
+      return;
+    }
+    
+    // Préparer les données pour l'envoi
+    const dataToSave = {
+      ...formData,
+      // S'assurer que le numéro est bien formaté
+      telephone: formData.telephoneAvecIndicatif.startsWith('+') 
+        ? formData.telephoneAvecIndicatif 
+        : `+${formData.telephoneAvecIndicatif}`.replace(/\s+/g, ''),
+      // S'assurer que l'email est en minuscules
+      email: formData.email.toLowerCase()
+    };
+    
+    console.log('Données à enregistrer:', dataToSave);
+    onSave(dataToSave);
   }
 
   const handleClose = () => {
     setStep(1)
     onClose()
   }
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Ne garder que les chiffres
+    const value = e.target.value.replace(/\D/g, '');
+    
+    setFormData(prev => {
+      // Créer le numéro complet avec l'indicatif
+      const indicatif = pays.find(p => p.value1 === prev.indicatifPays)?.value2 || '';
+      const telephoneComplet = indicatif ? `${indicatif}${value}` : value;
+      
+      return {
+        ...prev,
+        telephone: value, // Stocker uniquement le numéro sans l'indicatif
+        telephoneAvecIndicatif: telephoneComplet // Stocker le numéro complet avec l'indicatif
+      };
+    });
+  }
+  
+  // Mettre à jour le numéro avec l'indicatif quand l'indicatif change
+  const handleIndicatifChange = (value: string) => {
+    // Trouver le pays sélectionné
+    const paysSelectionne = pays.find(p => p.value1 === value);
+    
+    setFormData(prev => ({
+      ...prev,
+      indicatifPays: value, // Stocker la valeur du pays (value1)
+      // Mettre à jour le numéro complet avec le nouvel indicatif
+      telephoneAvecIndicatif: paysSelectionne?.value2 
+        ? `${paysSelectionne.value2}${prev.telephone}` 
+        : prev.telephone
+    }));
+  }
+
+  // Trier les listes par ordre alphabétique
+  const secteursTries = [...secteurs].sort((a, b) => a.value1.localeCompare(b.value1));
+  const villesTriees = [...villes].sort((a, b) => a.value1.localeCompare(b.value1));
+  const paysTries = [...pays].sort((a, b) => a.value1.localeCompare(b.value1));
+  
+  // Log pour déboguer
+  console.log('=== DEBUG PAYS ===');
+  console.log('Pays reçus en props:', pays);
+  console.log('FormData actuel:', formData);
+  
+  // Afficher la structure des 3 premiers pays
+  if (pays && pays.length > 0) {
+    console.log('Structure des 3 premiers pays:');
+    pays.slice(0, 3).forEach((p, i) => {
+      console.log(`Pays ${i + 1}:`, {
+        value1: p.value1,
+        value2: p.value2,
+        code: p.code,
+        refID: p.refID,
+        hasValue1: !!p.value1,
+        hasValue2: !!p.value2,
+        hasCode: !!p.code
+      });
+    });
+  } else {
+    console.log('Aucun pays chargé');
+  }
+  
+  // Vérifier le pays sélectionné
+  const paysSelectionne = pays.find(p => p.value1 === formData.indicatifPays);
+  console.log('Pays sélectionné:', paysSelectionne);
+  console.log('Valeur actuelle de indicatifPays:', formData.indicatifPays);
+  
+  if (paysSelectionne) {
+    console.log('Détails du pays sélectionné:', {
+      value1: paysSelectionne.value1,
+      value2: paysSelectionne.value2,
+      code: paysSelectionne.code,
+      refID: paysSelectionne.refID
+    });
+  } else {
+    console.log('Aucun pays ne correspond à l\'indicatif actuel');
+  }
+  
+  console.log('==================');
+  
+  // Fonction pour afficher le texte du sélecteur
+  const afficherTexteSelecteur = () => {
+    console.log('=== afficherTexteSelecteur ===');
+    console.log('indicatifPays:', formData.indicatifPays);
+    console.log('Nombre de pays disponibles:', pays.length);
+    
+    if (!formData.indicatifPays) {
+      console.log('Aucun indicatifPays défini');
+      return "Sélectionner un pays";
+    }
+    
+    // Afficher les 3 premiers pays pour débogage
+    console.log('3 premiers pays disponibles:', pays.slice(0, 3).map(p => ({
+      value1: p.value1,
+      value2: p.value2,
+      code: p.code
+    })));
+    
+    // Essayer de trouver le pays par value1 (code pays)
+    let paysTrouve = pays.find(p => p.value1 === formData.indicatifPays);
+    console.log('Résultat recherche par value1:', paysTrouve);
+    
+    // Si pas trouvé, essayer par value2 (indicatif)
+    if (!paysTrouve) {
+      paysTrouve = pays.find(p => p.value2 === formData.indicatifPays);
+      console.log('Résultat recherche par value2:', paysTrouve);
+    }
+    
+    // Si toujours pas trouvé, essayer par code
+    if (!paysTrouve) {
+      paysTrouve = pays.find(p => p.code === formData.indicatifPays);
+      console.log('Résultat recherche par code:', paysTrouve);
+    }
+    
+    if (!paysTrouve) {
+      console.log('Aucun pays trouvé avec cet indicatif');
+      // Retourner le premier pays disponible comme valeur par défaut
+      const premierPays = pays[0];
+      if (premierPays) {
+        console.log('Utilisation du premier pays disponible comme valeur par défaut');
+        return premierPays.value2 || premierPays.value1 || premierPays.code || "Sélectionner un pays";
+      }
+      return `Inconnu (${formData.indicatifPays})`;
+    }
+    
+    console.log('Pays trouvé:', {
+      value1: paysTrouve.value1,
+      value2: paysTrouve.value2,
+      code: paysTrouve.code
+    });
+    
+    // Retourner value2 (indicatif) s'il existe, sinon value1, sinon code
+    return paysTrouve.value2 || paysTrouve.value1 || paysTrouve.code || "Inconnu";
+  };
 
   return (
     <div className="space-y-4">
@@ -133,7 +331,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                   <SelectValue placeholder="Sélectionner un secteur" />
                 </SelectTrigger>
                 <SelectContent>
-                  {secteurs.map((secteur) => (
+                  {secteursTries.map((secteur) => (
                     <SelectItem key={secteur.refID} value={secteur.value1}>
                       {secteur.value1}
                     </SelectItem>
@@ -153,7 +351,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                   <SelectValue placeholder="Sélectionner une ville" />
                 </SelectTrigger>
                 <SelectContent>
-                  {villes.map((ville) => (
+                  {villesTriees.map((ville) => (
                     <SelectItem key={ville.refID} value={ville.value1}>
                       {ville.value1}
                     </SelectItem>
@@ -167,22 +365,18 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
             <Label htmlFor="telephone">Téléphone *</Label>
             <div className="flex gap-2">
               <Select
-                value={formData.indicatifPays}
-                onValueChange={(value) =>
-                  setFormData({ 
-                    ...formData, 
-                    indicatifPays: value,
-                    telephoneAvecIndicatif: value + formData.telephone
-                  })
-                }
+                value={formData.indicatifPays || ''}
+                onValueChange={handleIndicatifChange}
               >
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="+241" />
+                  <SelectValue>
+                    {afficherTexteSelecteur()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {pays.map((paysItem) => (
+                  {paysTries.map((paysItem) => (
                     <SelectItem key={paysItem.refID} value={paysItem.value1}>
-                      {paysItem.value1} {paysItem.value2}
+                      {paysItem.value2} {paysItem.value1}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -190,14 +384,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               <Input
                 id="telephone"
                 value={formData.telephone}
-                onChange={(e) => {
-                  const tel = e.target.value.replace(/\D/g, '');
-                  setFormData({ 
-                    ...formData, 
-                    telephone: tel,
-                    telephoneAvecIndicatif: formData.indicatifPays ? formData.indicatifPays + tel : tel
-                  })
-                }}
+                onChange={handlePhoneChange}
                 placeholder="6 12 34 56 78"
                 required
               />
@@ -264,23 +451,25 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="typeCompte">Type de compte</Label>
-            <Select
-              value={formData.typeCompte}
-              onValueChange={(value) =>
-                setFormData({ ...formData, typeCompte: value })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="POSTPAYE">Postpayé</SelectItem>
-                <SelectItem value="PREPAYE">Prépayé</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {mode === 'create' && (
+            <div className="space-y-2">
+              <Label htmlFor="typeCompte">Type de compte</Label>
+              <Select
+                value={formData.typeCompte}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, typeCompte: value as any })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un type de compte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="POSTPAYE">Postpayé</SelectItem>
+                  <SelectItem value="PREPAYE">Prépayé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       )}
 

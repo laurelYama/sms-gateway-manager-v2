@@ -45,8 +45,6 @@ export interface GenerationParams {
 
 export interface FacturationActionsProps {
     onGenerate: () => void
-    onDownloadAll: () => void
-    onSendAll: () => void
     onConfigureFooter: () => void
     loading?: boolean
 }
@@ -57,6 +55,7 @@ export interface FacturationTableProps {
     onDownload: (id: string) => void
     onSend: (id: string) => void
     loading?: boolean
+    sending?: Record<string, boolean>
 }
 
 export interface CalendrierFacturationProps {

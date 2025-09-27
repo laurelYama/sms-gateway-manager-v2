@@ -1,7 +1,8 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { Download, Send, Eye } from "lucide-react"
+import { Download, Send, Eye, MoreHorizontal } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 // Formatage de date personnalisé pour le français
 const formatDate = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
@@ -21,7 +22,7 @@ interface FacturationTableProps {
     loading?: boolean
 }
 
-export function FacturationTable({ factures, onPreview, onDownload, onSend, loading = false }: FacturationTableProps) {
+export function FacturationTable({ factures, onPreview, onDownload, onSend, loading = false, sending = {} }: FacturationTableProps) {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'GENEREE':
@@ -76,36 +77,46 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
                                 {formatDate(facture.dateDebut)} - {formatDate(facture.dateFin)}
                             </TableCell>
                             <TableCell>{facture.consommationSms} SMS</TableCell>
-                            <TableCell>{facture.montant.toLocaleString('fr-FR')} MGA</TableCell>
+                            <TableCell>{facture.montant.toLocaleString('fr-FR')} F CFA</TableCell>
                             <TableCell>{getStatusBadge(facture.statut)}</TableCell>
                             <TableCell>
-                                <div className="flex items-center gap-2">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => onPreview(facture.id)}
-                                        title="Prévisualiser"
-                                    >
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => onDownload(facture.id)}
-                                        title="Télécharger"
-                                    >
-                                        <Download className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => onSend(facture.id)}
-                                        title="Envoyer"
-                                        disabled={facture.statut === 'ENVOYEE' || facture.statut === 'PAYEE'}
-                                    >
-                                        <Send className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Ouvrir le menu</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                        <DropdownMenuItem 
+                                            onClick={() => onPreview(facture.id)}
+                                            className="cursor-pointer"
+                                        >
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            Prévisualiser
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => onDownload(facture.id)}
+                                            className="cursor-pointer"
+                                        >
+                                            <Download className="mr-2 h-4 w-4" />
+                                            Télécharger
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => onSend(facture.id)}
+                                            disabled={facture.statut === 'ENVOYEE' || facture.statut === 'PAYEE' || sending[facture.id]}
+                                            className="cursor-pointer"
+                                        >
+                                            {sending[facture.id] ? (
+                                                <div className="mr-2 h-4 w-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                                            ) : (
+                                                <Send className="mr-2 h-4 w-4" />
+                                            )}
+                                            Envoyer
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </TableCell>
                         </TableRow>
                     ))}

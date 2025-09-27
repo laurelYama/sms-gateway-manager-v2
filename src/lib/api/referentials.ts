@@ -2,6 +2,14 @@ import { Referentiel, ReferentielFormData } from '@/app/dashboard/referentiels/t
 
 const API_BASE_URL = 'https://api-smsgateway.solutech-one.com/api/v1/referentiel';
 
+interface PaginatedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 export async function getReferentials(): Promise<Referentiel[]> {
   const token = localStorage.getItem('authToken');
   const response = await fetch(`${API_BASE_URL}/all`, {
@@ -12,13 +20,14 @@ export async function getReferentials(): Promise<Referentiel[]> {
   });
   
   if (!response.ok) {
-    throw new Error('Erreur lors de la récupération des référentiels');
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Erreur lors de la récupération des référentiels');
   }
   
   return response.json();
 }
 
-export async function searchReferentials(query: string): Promise<Referentiel[]> {
+export async function searchReferentials(query: string): Promise<PaginatedResponse<Referentiel>> {
   const token = localStorage.getItem('authToken');
   const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`, {
     headers: {
@@ -28,7 +37,8 @@ export async function searchReferentials(query: string): Promise<Referentiel[]> 
   });
   
   if (!response.ok) {
-    throw new Error('Erreur lors de la recherche des référentiels');
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Erreur lors de la recherche des référentiels');
   }
   
   return response.json();
