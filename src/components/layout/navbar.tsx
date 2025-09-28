@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +32,7 @@ export function Navbar() {
     const [userData, setUserData] = useState<UserData | null>(null)
     const [notificationCount, setNotificationCount] = useState(3)
     const router = useRouter()
+    const pathname = usePathname()
 
     useEffect(() => {
         // Vérifier immédiatement l'état d'authentification
@@ -112,7 +113,8 @@ export function Navbar() {
 
     const handleLogout = () => {
         clearToken()
-        router.push("/login")
+        // Rediriger vers la page de connexion avec un paramètre pour éviter la boucle de redirection
+        router.push(`/login?from=${encodeURIComponent(pathname)}`)
     }
 
     const getInitials = (name: string) => {
@@ -242,7 +244,10 @@ export function Navbar() {
                             </div>
                         )}
 
-                        <DropdownMenuItem className="cursor-pointer">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => router.push('/dashboard/profil')}
+                        >
                             <User className="mr-2 h-4 w-4" />
                             <span>Profil</span>
                         </DropdownMenuItem>

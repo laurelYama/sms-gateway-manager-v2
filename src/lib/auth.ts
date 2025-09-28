@@ -1,18 +1,9 @@
 // src/lib/auth.ts
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { UserToken } from '@/types';
 
 const TOKEN_KEY = "authToken"
 const USER_DATA_KEY = "userData"
-
-export interface UserToken {
-    sub: string;
-    id: string;
-    nom: string;
-    role: string;
-    abonneExpire: boolean;
-    iat: number;
-    exp: number;
-}
 
 // Sauvegarder le token
 export function setToken(token: string): void {
@@ -114,9 +105,9 @@ export function useAuth() {
     const [token, setTokenState] = useState<string | null>(null);
     const [userData, setUserData] = useState<UserToken | null>(null);
     const [loading, setLoading] = useState(true);
-
+    
     // Fonction pour mettre à jour les données utilisateur à partir du token
-    const updateUserDataFromToken = (token: string) => {
+    const updateUserDataFromToken = useCallback((token: string) => {
         const decoded = decodeToken(token);
         if (decoded) {
             console.log('Mise à jour des données utilisateur depuis le token:', decoded);
@@ -126,7 +117,16 @@ export function useAuth() {
             return true;
         }
         return false;
-    };
+    }, []);
+    
+    // Fonction pour forcer une mise à jour des données utilisateur
+    const refreshUserData = useCallback(() => {
+        const storedToken = getToken();
+        if (storedToken) {
+            return updateUserDataFromToken(storedToken);
+        }
+        return false;
+    }, [updateUserDataFromToken]);
 
     useEffect(() => {
         const storedToken = getToken();
@@ -148,25 +148,28 @@ export function useAuth() {
         }
         
         setLoading(false);
-    }, []);
+    }, [updateUserDataFromToken]);
 
-    const login = (token: string) => {
+    const login = useCallback((token: string) => {
         setToken(token);
+        setTokenState(token);
         updateUserDataFromToken(token);
-    };
+    }, [updateUserDataFromToken]);
 
-    const logout = () => {
+    const logout = useCallback(() => {
         clearToken();
         setTokenState(null);
         setUserData(null);
-    };
+    }, []);
 
     return {
-        token,
-        userData,
+        token, 
+        user: userData, 
+        userId: userData?.id,
+        loading, 
         isAuthenticated: !!token && !isTokenExpired(token),
-        loading,
         login,
-        logout
+        logout,
+        refreshUserData
     };
 }
