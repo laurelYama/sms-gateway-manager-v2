@@ -19,7 +19,8 @@ export const REFERENTIEL_CATEGORIES: Record<string, string> = {
   '001': 'Ville',
   '002': "Secteur d'activité",
   '003': 'Opérateur',
-  '004': 'Pays'
+  '004': 'Pays',
+  '005': 'Motifs de rejet'
 } as const;
 
 export type ReferentielFormData = Omit<Referentiel, 'id' | 'createdAt' | 'updatedAt'>;

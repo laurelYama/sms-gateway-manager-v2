@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth"
+import { API_BASE_URL } from "@/lib/config"
 import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -83,7 +84,7 @@ export default function FacturationPage() {
     const loadClientInfo = async (clientId: string) => {
         try {
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/clients/${clientId}`, {
+                `${API_BASE_URL}/api/V1/clients/${clientId}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         Accept: "application/json",
@@ -109,7 +110,7 @@ export default function FacturationPage() {
         try {
             // Chargement direct des factures sans vérification de santé préalable
             const response = await fetch(
-                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures', 
+                `${API_BASE_URL}/api/V1/billing/factures`, 
                 {
                     method: 'GET',
                     headers: {
@@ -160,7 +161,7 @@ export default function FacturationPage() {
 
         try {
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${annee}/calendrier`, 
+                `${API_BASE_URL}/api/V1/billing/exercices/${annee}/calendrier`, 
                 {
                     method: 'GET',
                     headers: {
@@ -262,7 +263,7 @@ export default function FacturationPage() {
 
         try {
             const response = await fetch(
-                "https://api-smsgateway.solutech-one.com/api/v1/footer", 
+                `${API_BASE_URL}/api/v1/footer`, 
                 {
                     method: 'GET',
                     headers: {
@@ -285,70 +286,17 @@ export default function FacturationPage() {
         }
     }, [token])
 
-    // Chargement des années fiscales disponibles
-    const loadAvailableYears = useCallback(async () => {
-        if (!token) return [];
-
-        try {
-            const response = await fetch(
-                'https://api-smsgateway.solutech-one.com/api/V1/billing/exercices', 
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                        'Pragma': 'no-cache'
-                    },
-                    cache: 'no-store' as RequestCache
-                }
-            );
-
-            let years: number[] = [];
-            const currentYear = new Date().getFullYear();
-            
-            if (response.ok) {
-                try {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        // Filtrer pour ne garder que les années ouvertes et les trier par ordre décroissant
-                        years = data
-                            .filter((ex: Exercice) => ex.statut === 'OUVERT')
-                            .map((ex: Exercice) => ex.annee)
-                            .sort((a: number, b: number) => b - a);
-                    }
-                } catch (parseError) {
-                    console.warn("Erreur lors de l'analyse de la réponse des exercices:", parseError);
-                }
-            } else {
-                console.warn(`Erreur ${response.status} lors du chargement des exercices`);
-            }
-
-            // Si aucune année n'est disponible, on utilise une valeur par défaut
-            if (years.length === 0) {
-                years = [currentYear - 1, currentYear, currentYear + 1];
-                console.warn("Utilisation des années par défaut:", years);
-            }
-
-            setAvailableYears(years);
-
-            // Si l'année actuellement sélectionnée n'est pas dans la liste des années disponibles,
-            // on sélectionne la première année disponible
-            if (years.length > 0 && !years.includes(selectedYear)) {
-                const newYear = years[0];
-                console.log(`Changement d'année de ${selectedYear} à ${newYear} (non disponible)`);
-                setSelectedYear(newYear);
-            }
-
-            return years;
-        } catch (error) {
-            console.error("Erreur lors du chargement des années fiscales:", error);
-            // En cas d'erreur, on utilise les 3 dernières années comme solution de repli
-            const currentYear = new Date().getFullYear();
-            const fallbackYears = [currentYear - 1, currentYear, currentYear + 1];
-            setAvailableYears(fallbackYears);
-            return fallbackYears;
+    // Années disponibles pour la sélection (année en cours par défaut)
+    useEffect(() => {
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear - 1, currentYear, currentYear + 1];
+        setAvailableYears(years);
+        
+        // Définir l'année en cours comme sélectionnée par défaut
+        if (!selectedYear || !years.includes(selectedYear)) {
+            setSelectedYear(currentYear);
         }
-    }, [token, selectedYear]);
+    }, []);
 
     // Charger les données initiales
     useEffect(() => {
@@ -357,35 +305,19 @@ export default function FacturationPage() {
         const loadInitialData = async () => {
             try {
                 setLoading(true);
-                // Charger d'abord les années disponibles
-                const years = await loadAvailableYears();
                 
-                // Si on a des années disponibles et que l'année sélectionnée n'est pas dans la liste
-                if (years.length > 0) {
-                    if (!years.includes(selectedYear)) {
-                        // Sélectionner automatiquement la première année disponible
-                        setSelectedYear(years[0]);
-                    }
-                    
-                    // Charger les factures et le calendrier en parallèle
-                    await Promise.all([
-                        loadFactures().catch(error => {
-                            console.error('Erreur lors du chargement des factures:', error);
-                            toast.error('Erreur lors du chargement des factures');
-                        }),
-                        loadCalendrier(selectedYear).catch(error => {
-                            // Ne rien faire ici car loadCalendrier gère déjà les erreurs
-                            // et affiche les messages appropriés
-                            console.error('Erreur lors du chargement du calendrier:', error);
-                        })
-                    ]);
-                } else {
-                    // Aucune année disponible, charger uniquement les factures
-                    await loadFactures().catch(error => {
+                // Charger les factures et le calendrier en parallèle
+                await Promise.all([
+                    loadFactures().catch(error => {
                         console.error('Erreur lors du chargement des factures:', error);
                         toast.error('Erreur lors du chargement des factures');
-                    });
-                }
+                    }),
+                    loadCalendrier(selectedYear).catch(error => {
+                        // Ne rien faire ici car loadCalendrier gère déjà les erreurs
+                        // et affiche les messages appropriés
+                        console.error('Erreur lors du chargement du calendrier:', error);
+                    })
+                ]);
             } catch (error) {
                 console.error('Erreur lors du chargement des données initiales:', error);
                 toast.error('Erreur lors du chargement des données');
@@ -395,15 +327,15 @@ export default function FacturationPage() {
         };
         
         loadInitialData();
-    }, [token, loadAvailableYears, loadFactures, loadCalendrier, selectedYear]);
+    }, [token, loadFactures, loadCalendrier, selectedYear]);
 
     // Gestion du changement d'année
-    const handleYearChange = (year: number) => {
+    const handleYearChange = useCallback((year: number) => {
         setSelectedYear(year);
         loadCalendrier(year).catch(error => {
             console.error('Erreur lors du chargement du calendrier:', error);
         });
-    };
+    }, [loadCalendrier]);
 
     // Calcul des factures paginées
     const paginatedFactures = factures.slice(
@@ -417,7 +349,7 @@ export default function FacturationPage() {
         
         try {
             const response = await fetch(
-                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures/export', 
+                `${API_BASE_URL}/api/V1/billing/factures/export`, 
                 {
                     method: 'GET',
                     headers: {
@@ -451,23 +383,12 @@ export default function FacturationPage() {
         }
     };
 
-    // Gestion de la prévisualisation d'une facture
-    const handlePreviewInvoice = (factureId: string) => {
-        window.open(
-            `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/preview`,
-            '_blank'
-        );
-    };
-
-    // Gestion du téléchargement d'une facture
-    const handleDownloadInvoice = async (factureId: string) => {
+    // Gestion de la prévisualisation d'une facture (fetch + Authorization, puis ouverture via Object URL)
+    const handlePreviewInvoice = async (factureId: string) => {
         if (!token) return;
-        
         try {
-            setSending(prev => ({ ...prev, [factureId]: true }));
-            
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/download`,
+                `${API_BASE_URL}/api/V1/billing/factures/${factureId}/pdf`,
                 {
                     method: 'GET',
                     headers: {
@@ -479,25 +400,81 @@ export default function FacturationPage() {
                     cache: 'no-store' as RequestCache
                 }
             );
-
             if (!response.ok) {
-                throw new Error('Erreur lors du téléchargement de la facture');
+                throw new Error('Impossible de récupérer le PDF');
             }
-
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            // Libérer l'URL blob après un délai
+            setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+        } catch (error) {
+            console.error('Erreur prévisualisation facture:', error);
+            toast.error("Échec de la prévisualisation (401 probable si non authentifié)");
+        }
+    };
+
+    // Gestion du téléchargement d'une facture
+    const handleDownloadInvoice = async (factureId: string) => {
+        if (!token) {
+            toast.error('Veuillez vous reconnecter');
+            return;
+        }
+        
+        try {
+            setSending(prev => ({ ...prev, [factureId]: true }));
+            
+            const response = await fetch(
+                `${API_BASE_URL}/api/V1/billing/factures/${factureId}/pdf`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/pdf',
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
+                    },
+                    credentials: 'include',
+                    cache: 'no-store' as RequestCache
+                }
+            );
+
+            // Vérifier si la réponse est un PDF
+            const contentType = response.headers.get('content-type');
+            const isPdf = contentType && contentType.includes('application/pdf');
+            
+            if (!response.ok || !isPdf) {
+                // Essayer de lire le message d'erreur
+                let errorMessage = 'Erreur lors du téléchargement';
+                try {
+                    const errorText = await response.text();
+                    if (errorText) {
+                        errorMessage = errorText;
+                    }
+                } catch (e) {
+                    console.error('Erreur lors de la lecture de la réponse:', e);
+                }
+                throw new Error(errorMessage);
+            }
+
+            // Créer un blob et forcer le téléchargement
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            
             const a = document.createElement('a');
             a.href = url;
             a.download = `facture-${factureId}.pdf`;
             document.body.appendChild(a);
             a.click();
+            
+            // Nettoyage
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             
             toast.success('Téléchargement de la facture réussi');
         } catch (error) {
-            console.error('Erreur lors du téléchargement de la facture:', error);
-            toast.error('Erreur lors du téléchargement de la facture');
+            console.error('Erreur lors du téléchargement:', error);
+            toast.error(error instanceof Error ? error.message : 'Erreur lors du téléchargement');
         } finally {
             setSending(prev => ({ ...prev, [factureId]: false }));
         }
@@ -511,7 +488,7 @@ export default function FacturationPage() {
             setSending(prev => ({ ...prev, [factureId]: true }));
             
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/V1/billing/factures/${factureId}/send`,
+                `${API_BASE_URL}/api/V1/billing/factures/${factureId}/send`,
                 {
                     method: 'POST',
                     headers: {
@@ -672,7 +649,7 @@ export default function FacturationPage() {
                         try {
                             setGenerating(true);
                             const response = await fetch(
-                                'https://api-smsgateway.solutech-one.com/api/V1/billing/factures/generate',
+                                `https://api-smsgateway.solutech-one.com/api/V1/billing/generer?annee=${values.annee}&mois=${values.mois}`,
                                 {
                                     method: 'POST',
                                     headers: {
@@ -682,10 +659,6 @@ export default function FacturationPage() {
                                         'Cache-Control': 'no-cache, no-store, must-revalidate',
                                         'Pragma': 'no-cache'
                                     },
-                                    body: JSON.stringify({
-                                        annee: values.annee,
-                                        mois: values.mois
-                                    }),
                                     cache: 'no-store' as RequestCache
                                 }
                             );
@@ -724,38 +697,17 @@ export default function FacturationPage() {
                     onOpenChange={setShowExerciceConfig}
                     onSave={async (values) => {
                         try {
-                            const response = await fetch(
-                                'https://api-smsgateway.solutech-one.com/api/V1/billing/exercices',
-                                {
-                                    method: 'POST',
-                                    headers: {
-                                        'Authorization': `Bearer ${token}`,
-                                        'Accept': 'application/json',
-                                        'Content-Type': 'application/json',
-                                        'Cache-Control': 'no-cache, no-store, must-revalidate',
-                                        'Pragma': 'no-cache'
-                                    },
-                                    body: JSON.stringify({
-                                        annee: values.annee,
-                                        statut: 'OUVERT'
-                                    }),
-                                    cache: 'no-store' as RequestCache
-                                }
-                            );
-
-                            if (!response.ok) {
-                                const errorData = await response.json().catch(() => ({}));
-                                throw new Error(errorData.message || 'Erreur lors de la création de l\'exercice');
-                            }
-
-                            toast.success('Exercice créé avec succès');
+                            // Mettre à jour l'année sélectionnée
+                            setSelectedYear(values.annee);
                             
-                            // Recharger les années disponibles
-                            await loadAvailableYears();
+                            // Recharger le calendrier pour la nouvelle année
+                            await loadCalendrier(values.annee);
+                            
+                            toast.success('Année sélectionnée avec succès');
                             setShowExerciceConfig(false);
                         } catch (error) {
-                            console.error('Erreur lors de la création de l\'exercice:', error);
-                            toast.error(error instanceof Error ? error.message : 'Erreur lors de la création de l\'exercice');
+                            console.error('Erreur lors du changement d\'année:', error);
+                            toast.error(error instanceof Error ? error.message : 'Erreur lors du changement d\'année');
                         }
                     }}
                 />

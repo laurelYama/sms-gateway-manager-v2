@@ -12,7 +12,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User } from "lucide-react"
 import { getUserData, clearToken, isValidToken, isTokenExpired, decodeToken, getToken } from "@/lib/auth"
 
 // Clé pour le stockage des données utilisateur dans le localStorage
@@ -30,7 +30,6 @@ interface UserData {
 
 export function Navbar() {
     const [userData, setUserData] = useState<UserData | null>(null)
-    const [notificationCount, setNotificationCount] = useState(3)
     const router = useRouter()
     const pathname = usePathname()
 
@@ -169,12 +168,6 @@ export function Navbar() {
         return roleStr;
     }
 
-    const handleNotificationsClick = () => {
-        // Réinitialiser le compteur de notifications
-        setNotificationCount(0)
-        // TODO: Implémenter la navigation vers les notifications
-        console.log("Ouvrir les notifications")
-    }
 
     return (
         <header className="w-full bg-white shadow-sm">
@@ -185,23 +178,6 @@ export function Navbar() {
                 </div>
 
                     <div className="flex items-center gap-4">
-                        {/* Notification Bell */}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="relative"
-                            onClick={handleNotificationsClick}
-                        >
-                            <Bell className="h-5 w-5" />
-                            {notificationCount > 0 && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-xs text-white items-center justify-center">
-                                        {notificationCount}
-                                    </span>
-                                </span>
-                            )}
-                        </Button>
 
                         {/* Profile Dropdown */}
                         <DropdownMenu>

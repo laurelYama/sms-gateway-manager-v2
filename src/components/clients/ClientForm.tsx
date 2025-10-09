@@ -25,6 +25,7 @@ interface ClientFormProps {
 
 export function ClientForm({ mode, initialData, onSave, onClose, villes, secteurs, pays }: ClientFormProps) {
   const [step, setStep] = useState(1)
+  // Pas de refs nécessaires pour le scroll natif
   // Fonction pour initialiser les données du formulaire
   const getInitialFormData = () => {
     console.log('Initialisation du formulaire avec les données:', initialData);
@@ -164,9 +165,9 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
   }
 
   // Trier les listes par ordre alphabétique
-  const secteursTries = [...secteurs].sort((a, b) => a.value1.localeCompare(b.value1));
-  const villesTriees = [...villes].sort((a, b) => a.value1.localeCompare(b.value1));
-  const paysTries = [...pays].sort((a, b) => a.value1.localeCompare(b.value1));
+  const secteursTries = [...secteurs].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
+  const villesTriees = [...villes].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
+  const paysTries = [...pays].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
   
   // Log pour déboguer
   console.log('=== DEBUG PAYS ===');
@@ -330,7 +331,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un secteur" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60 overflow-auto">
                   {secteursTries.map((secteur) => (
                     <SelectItem key={secteur.refID} value={secteur.value1}>
                       {secteur.value1}
@@ -350,7 +351,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une ville" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60 overflow-auto">
                   {villesTriees.map((ville) => (
                     <SelectItem key={ville.refID} value={ville.value1}>
                       {ville.value1}
@@ -373,7 +374,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                     {afficherTexteSelecteur()}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60 overflow-auto">
                   {paysTries.map((paysItem) => (
                     <SelectItem key={paysItem.refID} value={paysItem.value1}>
                       {paysItem.value2} {paysItem.value1}
@@ -430,10 +431,15 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 id="emetteur"
                 value={formData.emetteur}
                 onChange={(e) =>
-                  setFormData({ ...formData, emetteur: e.target.value })
+                  setFormData({ ...formData, emetteur: e.target.value.slice(0, 11) })
                 }
+                maxLength={11}
+                className={formData.emetteur.length >= 11 ? "border-red-500 focus-visible:ring-red-500" : undefined}
                 required
               />
+              <p className={`text-xs ${formData.emetteur.length >= 11 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                {formData.emetteur.length}/11 caractères
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="coutSmsTtc">Coût SMS TTC</Label>

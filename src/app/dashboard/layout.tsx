@@ -1,11 +1,29 @@
+"use client"
+
 import { Sidebar } from "@/components/layout/sidebar"
 import { Navbar } from "@/components/layout/navbar"
+import { useRequireAnyRole } from "@/hooks/use-require-role"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
+    const { isChecking, allowed } = useRequireAnyRole(["ADMIN", "SUPER_ADMIN", "AUDITEUR"])
+
+    // Loading state while determining auth/role
+    if (isChecking) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    // Prevent flash while redirecting unauth/unauthorized users
+    if (!allowed) return null
+
     return (
         <div className="flex min-h-screen bg-gray-50">
             {/* Sidebar - Fixed */}

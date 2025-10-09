@@ -1,4 +1,5 @@
 import { getToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/config";
 
 export interface AuditLog {
   id: string;
@@ -22,8 +23,7 @@ export interface UserEmailParams {
   userEmail: string;
 }
 
-// URL de base de l'API
-const API_BASE_URL = 'https://api-smsgateway.solutech-one.com';
+// URL de base de l'API centralisée via les variables d'environnement
 
 export const auditLogService = {
   async getAllLogs(): Promise<AuditLog[]> {

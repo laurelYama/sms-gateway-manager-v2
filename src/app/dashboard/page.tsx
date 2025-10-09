@@ -13,7 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { getToken } from '@/lib/auth'
+import { useAuth } from '@/lib/auth'
 import { fetchTickets } from '@/lib/api/tickets'
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, 
@@ -48,54 +50,1067 @@ const mockClientData = [
 ]
 
 export default function DashboardPage() {
+  const { token } = useAuth()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState('7days')
-  const [searchTerm, setSearchTerm] = useState('')
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchTickets()
-        setTickets(data)
-      } catch (err) {
-        setError('Erreur lors du chargement des données')
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+  const [activeClients, setActiveClients] = useState(0)
+  const [clientsLoading, setClientsLoading] = useState(true)
+  const [openTicketsCount, setOpenTicketsCount] = useState(0)
+  const [ticketsLoading, setTicketsLoading] = useState(true)
+  
+  // États pour la facturation
+  const [billingData, setBillingData] = useState<Array<{
+    id: string
+    mois: number
+    dateDebutConsommation: string
+    dateFinConsommation: string
+    dateGenerationFacture: string
+    exercice: {
+      id: string
+      annee: number
+      statut: string
+      createdAt: string
     }
-    loadData()
-  }, [])
+  }>>([])
+  const [billingLoading, setBillingLoading] = useState(true)
+  
+  // États pour les SMS
+  const [smsLoading, setSmsLoading] = useState(true)
+  const [pendingSmsLoading, setPendingSmsLoading] = useState(true)
+  const [smsTrend, setSmsTrend] = useState<{value: string, isPositive: boolean} | null>(null)
+  const [sentSmsCount, setSentSmsCount] = useState(0)
+  const [pendingSmsCount, setPendingSmsCount] = useState(0)
+  // Interface pour les statistiques SMS
+  interface SmsStats {
+    current: number;
+    previous: number;
+    trend: number;
+    progress: number;
+    yearlyData?: Array<{
+      year: number;
+      count: number;
+    }>;
+  }
+
+  // État pour les statistiques SMS
+  const [smsStats, setSmsStats] = useState<SmsStats>({
+    current: 0,
+    previous: 0,
+    trend: 0,
+    progress: 0,
+    monthlyData: undefined
+  });
+  const [recentSms, setRecentSms] = useState<Array<{
+    ref: string;
+    type: string;
+    destinataire: string;
+    emetteur: string;
+    statut: string;
+    dateDebutEnvoi?: string | null;
+    dateFinEnvoi?: string | null;
+    updatedAt: string;
+  }>>([]);
+  const [recentSmsLoading, setRecentSmsLoading] = useState<boolean>(true);
+  
+  // Fonction pour calculer la progression des SMS
+  const calculateSmsProgress = (smsList: any[]) => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
+    let currentMonthCount = 0;
+    let lastMonthCount = 0;
+    
+    console.log(`Calcul des statistiques SMS - Mois en cours: ${currentMonth+1}/${currentYear}, Mois dernier: ${lastMonth+1}/${lastMonthYear}`);
+    
+    smsList.forEach(sms => {
+      // On ne compte que les SMS avec statut 'ENVOYE' et une date de mise à jour valide
+      if (sms.statut !== 'ENVOYE' || !sms.updatedAt) {
+        return;
+      }
+      
+      try {
+        const smsDate = new Date(sms.updatedAt);
+        const smsMonth = smsDate.getMonth();
+        const smsYear = smsDate.getFullYear();
+        
+        // Vérification des dates pour le décompte
+        if (smsYear === currentYear && smsMonth === currentMonth) {
+          currentMonthCount++;
+          console.log(`SMS du mois en cours: ${sms.ref} - ${sms.updatedAt}`);
+        } else if ((smsYear === lastMonthYear && smsMonth === lastMonth) || 
+                  (currentMonth === 0 && smsMonth === 11 && smsYear === currentYear - 1)) {
+          lastMonthCount++;
+          console.log(`SMS du mois dernier: ${sms.ref} - ${sms.updatedAt}`);
+        }
+      } catch (error) {
+        console.error('Erreur lors du traitement de la date du SMS:', sms.updatedAt, error);
+      }
+    });
+    
+    console.log(`Résultats - Ce mois: ${currentMonthCount}, Mois dernier: ${lastMonthCount}`);
+    
+    // Calcul de la tendance
+    let trend = 0;
+    if (lastMonthCount > 0) {
+      trend = ((currentMonthCount - lastMonthCount) / lastMonthCount) * 100;
+    } else if (currentMonthCount > 0) {
+      trend = 100; // Si pas de SMS le mois dernier mais des SMS ce mois-ci
+    }
+    
+    // Calcul de la progression (limitée à 100%)
+    const progress = Math.min(100, (currentMonthCount / (lastMonthCount || 1)) * 100);
+    
+    return {
+      current: currentMonthCount,
+      previous: lastMonthCount,
+      trend: parseFloat(trend.toFixed(1)),
+      progress: Math.round(progress)
+    };
+  };
+
+  // Fonction pour charger les données de facturation
+  const fetchBillingData = useCallback(async () => {
+    try {
+      if (!token) {
+        console.error('Aucun token disponible');
+        return [];
+      }
+      
+      const currentYear = new Date().getFullYear();
+      const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${currentYear}/calendrier`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des données de facturation:', response.status, errorText);
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        console.error('La réponse des données de facturation n\'est pas un tableau:', data);
+        return [];
+      }
+      
+      // Trier par date de génération de facture (la plus récente en premier)
+      const sortedData = [...data].sort((a, b) => 
+        new Date(b.dateGenerationFacture).getTime() - new Date(a.dateGenerationFacture).getTime()
+      );
+      
+      setBillingData(sortedData);
+      return sortedData;
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des données de facturation:', error);
+      return [];
+    } finally {
+      setBillingLoading(false);
+    }
+  }, [token]);
+
+  // Fonction pour charger les clients actifs
+  const fetchActiveClients = useCallback(async () => {
+    try {
+      if (!token) {
+        console.error('Aucun token disponible');
+        return 0;
+      }
+      
+      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/clients', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des clients:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
+      
+      const clients = await response.json();
+      
+      // Vérifier si clients est un tableau
+      if (!Array.isArray(clients)) {
+        console.error('La réponse des clients n\'est pas un tableau:', clients);
+        return 0;
+      }
+      
+      const activeCount = clients.filter((client: any) => client.statutCompte === 'ACTIF').length;
+      setActiveClients(activeCount);
+      return activeCount;
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des clients actifs:', error);
+      return 0;
+    } finally {
+      setClientsLoading(false);
+    }
+  }, [token]);
+
+  // Fonction pour calculer la tendance des SMS
+  const calculateSmsTrend = (currentMonthCount: number, previousMonthCount: number) => {
+    if (previousMonthCount === 0) {
+      return { value: '100%', isPositive: true };
+    }
+    
+    const percentage = Math.round(((currentMonthCount - previousMonthCount) / previousMonthCount) * 100);
+    
+    return {
+      value: `${Math.abs(percentage)}%`,
+      isPositive: percentage >= 0
+    };
+  };
+
+  // Fonction pour vérifier si une date est dans un mois donné
+  const isInMonth = (dateStr: string, year: number, month: number) => {
+    try {
+      const date = new Date(dateStr);
+      return date.getFullYear() === year && date.getMonth() === month;
+    } catch (e) {
+      console.error('Erreur de format de date:', dateStr, e);
+      return false;
+    }
+  };
+
+  // Fonction pour compter les SMS envoyés du mois en cours
+  const fetchSentSmsCount = useCallback(async () => {
+    try {
+      if (!token) {
+        console.error('Aucun token disponible');
+        return { currentMonthCount: 0, previousMonthCount: 0 };
+      }
+      
+      // Récupérer tous les SMS envoyés
+      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des SMS envoyés:', response.status, errorText);
+        return { currentMonthCount: 0, previousMonthCount: 0 };
+      }
+      
+      const allSms = await response.json();
+      if (!Array.isArray(allSms)) {
+        console.error('La réponse des SMS n\'est pas un tableau:', allSms);
+        return { currentMonthCount: 0, previousMonthCount: 0 };
+      }
+      
+      // Obtenir le mois et l'année actuels
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Compter les SMS du mois en cours
+      const currentCount = allSms.filter((sms: any) => {
+        if (!sms.updatedAt) return false;
+        const smsDate = new Date(sms.updatedAt);
+        return smsDate.getMonth() === currentMonth && 
+               smsDate.getFullYear() === currentYear &&
+               sms.statut === 'ENVOYE';
+      }).length;
+      
+      // Calculer le mois précédent (en gérant le passage d'année)
+      let previousMonth = currentMonth - 1;
+      let previousYear = currentYear;
+      if (previousMonth < 0) {
+        previousMonth = 11;
+        previousYear--;
+      }
+      
+      // Compter les SMS du mois précédent
+      const previousCount = allSms.filter((sms: any) => {
+        if (!sms.updatedAt) return false;
+        const smsDate = new Date(sms.updatedAt);
+        return smsDate.getMonth() === previousMonth && 
+               smsDate.getFullYear() === previousYear &&
+               sms.statut === 'ENVOYE';
+      }).length;
+      
+      console.log(`SMS comptabilisés - Actuel: ${currentCount}, Précédent: ${previousCount}`);
+      
+      // Mettre à jour le compteur de SMS du mois en cours
+      setSentSmsCount(currentCount);
+      
+      // Calculer et mettre à jour la tendance
+      const trend = calculateSmsTrend(currentCount, previousCount);
+      setSmsTrend(trend);
+      
+      console.log(`Statistiques SMS - Mois actuel: ${currentCount}, Mois précédent: ${previousCount}, Tendance: ${trend.value} ${trend.isPositive ? '↑' : '↓'}`);
+      
+      // Mettre à jour les statistiques SMS
+      setSmsStats({
+        current: currentCount,
+        previous: previousCount,
+        trend: trend.isPositive ? parseFloat(trend.value) : -parseFloat(trend.value),
+        progress: Math.min(100, currentCount)
+      });
+      
+      // Retourner les données pour une utilisation ultérieure
+      return { currentMonthCount: currentCount, previousMonthCount: previousCount };
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des SMS:', error);
+      setSentSmsCount(0);
+      return { currentMonthCount: 0, previousMonthCount: 0 };
+    } finally {
+      setSmsLoading(false);
+    }
+  }, [token]);
+
+// Fonction pour charger les tickets ouverts
+const fetchOpenTickets = useCallback(async () => {
+  try {
+    if (!token) {
+      console.error('Aucun token disponible')
+      return
+    }
+        
+    console.log('Récupération des tickets ouverts...')
+    const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    })
+        
+    console.log('Réponse tickets reçue:', response.status)
+        
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Erreur lors du chargement des tickets:', response.status, errorText)
+      throw new Error(`Erreur ${response.status}: ${errorText}`)
+    }
+        
+    const ticketsData = await response.json()
+    console.log('Tickets récupérés:', ticketsData)
+        
+    // Filtrer les tickets ouverts
+    if (Array.isArray(ticketsData)) {
+      const openTickets = ticketsData.filter((ticket: any) => ticket.statut === 'OUVERT')
+      setOpenTicketsCount(openTickets.length)
+    } else {
+      console.error('La réponse des tickets n\'est pas un tableau:', ticketsData)
+      setOpenTicketsCount(0)
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des tickets ouverts:', error)
+    setOpenTicketsCount(0)
+  } finally {
+    setTicketsLoading(false)
+  }
+  }, [token])
+
+  // Fonction pour charger les tickets
+  const fetchTickets = useCallback(async () => {
+    if (!token) {
+      console.log('fetchTickets: Aucun token disponible');
+      return [];
+    }
+    
+    try {
+      console.log('fetchTickets: Récupération des tickets...');
+      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`fetchTickets: Erreur ${response.status}`, errorText);
+        throw new Error(`Erreur ${response.status} lors du chargement des tickets`);
+      }
+      
+      const tickets = await response.json();
+      console.log(`fetchTickets: ${tickets.length} tickets chargés`);
+      return tickets;
+    } catch (error) {
+      console.error('Erreur lors du chargement des tickets:', error);
+      setError('Impossible de charger les tickets');
+      return [];
+    }
+  }, [token]);
+
+  // Fonction pour charger les SMS en attente
+  const fetchPendingSms = useCallback(async () => {
+    try {
+      if (!token) {
+        console.error('Aucun token disponible');
+        return 0;
+      }
+      
+      console.log('Récupération des SMS en attente...');
+      const response = await fetch(
+        'https://api-smsgateway.solutech-one.com/api/V1/sms/pending',
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          mode: 'cors'
+        }
+      );
+      
+      console.log('Réponse SMS en attente reçue:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des SMS en attente:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Données SMS en attente reçues:', data);
+      
+      // Compter le nombre de SMS en attente
+      const pendingCount = Array.isArray(data) ? data.length : 0;
+      setPendingSmsCount(pendingCount);
+      return pendingCount;
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des SMS en attente:', error);
+      return 0;
+    } finally {
+      setPendingSmsLoading(false);
+    }
+  }, [token])
+  
+  // Fonction pour récupérer les statistiques annuelles des SMS
+  const fetchYearlySmsStats = useCallback(async () => {
+    try {
+      if (!token) return [];
+      
+      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des SMS');
+      }
+
+      const allSms = await response.json();
+      
+      const yearlyStats = allSms.reduce((acc: {[key: number]: number}, sms: any) => {
+        if (!sms.updatedAt) return acc;
+        
+        const date = new Date(sms.updatedAt);
+        const year = date.getFullYear();
+        
+        if (!acc[year]) {
+          acc[year] = 0;
+        }
+        
+        acc[year]++;
+        return acc;
+      }, {});
+
+      const yearlyData = Object.entries(yearlyStats).map(([year, count]) => ({
+        year: parseInt(year),
+        count: count as number
+      }));
+
+      yearlyData.sort((a, b) => a.year - b.year);
+
+      setSmsStats(prev => ({
+        ...prev,
+        yearlyData
+      }));
+      
+      return yearlyData;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques mensuelles:', error);
+      return [];
+    }
+  }, [token]);
+
+  // Fonction pour charger les SMS récents
+  const fetchRecentSms = useCallback(async () => {
+    if (!token) {
+      console.log('fetchRecentSms: Aucun token disponible');
+      setRecentSmsLoading(false);
+      return [];
+    }
+    
+    try {
+      console.log('fetchRecentSms: Récupération des 5 derniers SMS...');
+      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes?limit=5', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`fetchRecentSms: Erreur ${response.status}`, errorText);
+        throw new Error(`Erreur ${response.status} lors du chargement des SMS récents`);
+      }
+      
+      const smsList = await response.json();
+      console.log(`fetchRecentSms: ${Array.isArray(smsList) ? smsList.length : 0} SMS récupérés`);
+      
+      if (!Array.isArray(smsList)) {
+        console.error('La réponse des SMS n\'est pas un tableau:', smsList);
+        return [];
+      }
+      
+      return smsList;
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des tickets:', error);
+      setError('Impossible de charger les tickets');
+      return [];
+    }
+  }, [token])
 
   // Statistiques des tickets
-  const ticketStats = tickets.reduce((acc, ticket) => {
-    acc[ticket.statut] = (acc[ticket.statut] || 0) + 1
-    return acc
-  }, { OUVERT: 0, EN_COURS: 0, FERME: 0 })
+  const [ticketStats, setTicketStats] = useState({
+    OUVERT: 0,
+    EN_COURS: 0,
+    FERME: 0
+  })
+  
+  // Couleurs pour les différents statuts
+  const statusColors = {
+    OUVERT: '#F59E0B', // Jaune
+    EN_COURS: '#3B82F6', // Bleu
+    FERME: '#10B981' // Vert
+  }
 
-  // Données pour les graphiques
-  const ticketData = Object.entries(ticketStats).map(([name, value]) => ({
-    name: name.replace('_', ' '),
-    value,
-  }))
+  // Effet pour charger les données initiales
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        setSmsLoading(true);
+        setTicketsLoading(true);
+        setClientsLoading(true);
+        setBillingLoading(true);
+        setRecentSmsLoading(true);
+
+        const [
+          ticketsData,
+          smsData,
+          pendingData,
+          clientsData,
+          billingData,
+          recentSmsData,
+          yearlyStats
+        ] = await Promise.all([
+          fetchTickets(),
+          fetchSentSmsCount(),
+          fetchPendingSms(),
+          fetchActiveClients(),
+          fetchBillingData(),
+          fetchRecentSms(),
+          fetchYearlySmsStats()
+        ]);
+
+        console.log('Données initiales chargées avec succès', {
+          tickets: Array.isArray(ticketsData) ? ticketsData.length : ticketsData,
+          smsCount: smsData,
+          pendingSms: pendingData,
+          activeClients: clientsData,
+          billingData: Array.isArray(billingData) ? billingData.length : billingData,
+          recentSms: Array.isArray(recentSmsData) ? recentSmsData.length : recentSmsData,
+          yearlyStats
+        });
+
+        // Mettre à jour les états
+        if (Array.isArray(ticketsData)) {
+          setTickets(ticketsData);
+          const openTickets = ticketsData.filter(ticket => 
+            ticket.statut === 'OUVERT' || ticket.statut === 'EN_COURS'
+          ).length;
+          setOpenTicketsCount(openTickets);
+        }
+
+        // Mettre à jour les SMS récents
+        if (Array.isArray(recentSmsData)) {
+          setRecentSms(recentSmsData);
+        }
+
+        // Mettre à jour les compteurs avec des valeurs par défaut si nécessaire
+        const smsCount = typeof smsData === 'object' && smsData !== null && 'currentMonthCount' in smsData 
+          ? smsData.currentMonthCount 
+          : 0;
+          
+        const pendingCount = typeof pendingData === 'number' ? pendingData : 0;
+        const clientsCount = typeof clientsData === 'number' ? clientsData : 0;
+        
+        setSentSmsCount(smsCount);
+        setPendingSmsCount(pendingCount);
+        setActiveClients(clientsCount);
+
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+        setError('Impossible de charger les données du tableau de bord');
+      } finally {
+        setLoading(false);
+        setTicketsLoading(false);
+        setSmsLoading(false);
+        setPendingSmsLoading(false);
+        setClientsLoading(false);
+        setBillingLoading(false);
+        setRecentSmsLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [token, fetchTickets, fetchSentSmsCount, fetchPendingSms, fetchActiveClients, fetchBillingData, fetchRecentSms, fetchYearlySmsStats]);
+
+  // Mettre à jour les statistiques des tickets
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const stats = tickets.reduce((acc, ticket) => {
+        acc[ticket.statut] = (acc[ticket.statut] || 0) + 1;
+        return acc;
+      }, { OUVERT: 0, EN_COURS: 0, FERME: 0 });
+      
+      setTicketStats(stats);
+    }
+  }, [tickets]);
+
+  // Données pour le graphique circulaire
+  const ticketData = Object.entries(ticketStats)
+    .filter(([_, value]) => value > 0) // Ne garder que les statuts avec au moins un ticket
+    .map(([name, value]) => ({
+      name: name.charAt(0) + name.slice(1).toLowerCase(), // Mettre en forme le nom
+      value,
+      color: statusColors[name] || '#9CA3AF' // Couleur par défaut gris
+    }))
+    
+  // Pourcentage total pour la légende
+  const totalTickets = Object.values(ticketStats).reduce((a, b) => a + b, 0)
 
   // Derniers tickets
   const recentTickets = [...tickets]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 5)
 
-  // Données pour le graphique d'activité
-  const activityData = [
-    { name: 'Lun', tickets: 4, sms: 2400 },
-    { name: 'Mar', tickets: 3, sms: 1398 },
-    { name: 'Mer', tickets: 6, sms: 9800 },
-    { name: 'Jeu', tickets: 8, sms: 3908 },
-    { name: 'Ven', tickets: 5, sms: 4800 },
-    { name: 'Sam', tickets: 1, sms: 800 },
-    { name: 'Dim', tickets: 2, sms: 1000 },
-  ]
+  // État pour stocker les données des SMS
+  const [smsData, setSmsData] = useState<Array<{date: string, sent: number, pending: number}>>([])
+  const [loadingSms, setLoadingSms] = useState(true)
+
+  // Fonction pour formater la date au format YYYY-MM-DD
+  const formatDate = (date: Date) => {
+    return date.toISOString().split('T')[0]
+  }
+
+  // Fonction pour obtenir le nom du jour en français
+  const getDayName = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', { weekday: 'short' })
+  }
+
+  // Fonction pour formater la date en temps relatif (ex: "il y a 2 min")
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) {
+      return 'à l\'instant'
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60)
+    if (diffInMinutes < 60) {
+      return `il y a ${diffInMinutes} min`
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60)
+    if (diffInHours < 24) {
+      return `il y a ${diffInHours} h`
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24)
+    return `il y a ${diffInDays} j`
+  }
+  
+  // État pour stocker le dernier ticket
+  const [latestTicket, setLatestTicket] = useState<{
+    id: string
+    emailClient: string
+    titre: string
+    createdAt: string
+  } | null>(null)
+  const [loadingTicket, setLoadingTicket] = useState(true)
+  
+  // État pour stocker la dernière commande en attente
+  const [latestCreditRequest, setLatestCreditRequest] = useState<{
+    id: string
+    requestCode: string
+    clientId: string
+    quantity: number
+    status: string
+    makerEmail: string
+    createdAt: string
+  } | null>(null)
+  const [loadingCreditRequest, setLoadingCreditRequest] = useState(true)
+  
+  // État pour stocker les clients les plus actifs (SMS en attente)
+  const [topActiveClients, setTopActiveClients] = useState<Array<{
+    clientId: string
+    emetteur: string
+    messageCount: number
+    lastActivity: string
+  }>>([])
+  const [loadingTopActiveClients, setLoadingTopActiveClients] = useState(true)
+  
+  // Charger les SMS récents
+  useEffect(() => {
+    fetchRecentSms()
+  }, [fetchRecentSms])
+
+  // Récupérer le dernier ticket
+  useEffect(() => {
+    const fetchLatestTicket = async () => {
+      try {
+        const token = getToken()
+        if (!token) return
+        
+        const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const tickets = await response.json()
+          if (tickets && tickets.length > 0) {
+            // Trier par date de création et prendre le plus récent
+            const sortedTickets = [...tickets].sort((a, b) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )
+            setLatestTicket(sortedTickets[0])
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération du dernier ticket:', error)
+      } finally {
+        setLoadingTicket(false)
+      }
+    }
+    
+    fetchLatestTicket()
+    
+    // Récupérer les clients les plus actifs
+    const fetchActiveClients = async () => {
+      try {
+        const token = getToken()
+        if (!token) return
+        
+        setLoadingTopActiveClients(true)
+        
+        const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/pending', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const smsList = await response.json()
+          
+          // Compter les SMS par client
+          const clientActivity: Record<string, {
+            clientId: string
+            emetteur: string
+            count: number
+            lastActivity: string
+          }> = {}
+          
+          smsList.forEach((sms: any) => {
+            if (!clientActivity[sms.clientId]) {
+              clientActivity[sms.clientId] = {
+                clientId: sms.clientId,
+                emetteur: sms.emetteur || 'Inconnu',
+                count: 0,
+                lastActivity: sms.updatedAt || sms.createdAt || new Date().toISOString()
+              }
+            }
+            clientActivity[sms.clientId].count++
+            
+            // Mettre à jour la dernière activité si plus récente
+            const smsDate = sms.updatedAt || sms.createdAt
+            if (smsDate && smsDate > clientActivity[sms.clientId].lastActivity) {
+              clientActivity[sms.clientId].lastActivity = smsDate
+            }
+          })
+          
+          // Trier par nombre de SMS (décroissant) et prendre les 5 premiers
+          const sortedClients = Object.values(clientActivity)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5)
+            .map(client => ({
+              clientId: client.clientId,
+              emetteur: client.emetteur,
+              messageCount: client.count,
+              lastActivity: client.lastActivity
+            }))
+          
+          setTopActiveClients(sortedClients)
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des clients actifs:', error)
+      } finally {
+        setLoadingTopActiveClients(false)
+      }
+    }
+    
+    fetchActiveClients()
+    
+    // Récupérer la dernière commande de crédit
+    const fetchLatestCreditRequest = async () => {
+      try {
+        const token = getToken()
+        if (!token) return
+        
+        const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/credits?sort=createdAt,desc&size=1', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.content && data.content.length > 0) {
+            setLatestCreditRequest(data.content[0])
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération de la dernière commande:', error)
+      } finally {
+        setLoadingCreditRequest(false)
+      }
+    }
+    
+    fetchLatestCreditRequest()
+    fetchActiveClients()
+  }, [])
+
+  // Récupérer les données des SMS
+  useEffect(() => {
+    const fetchSmsData = async () => {
+      try {
+        setLoadingSms(true)
+        const token = getToken()
+        
+        if (!token) {
+          console.error('Aucun token d\'authentification trouvé')
+          setLoadingSms(false)
+          return
+        }
+        
+        // Récupérer les SMS envoyés
+        const sentResponse = await fetch(
+          'https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes',
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            mode: 'cors'
+          }
+        )
+        
+        // Récupérer les SMS en attente
+        const pendingResponse = await fetch(
+          'https://api-smsgateway.solutech-one.com/api/V1/sms/pending',
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            mode: 'cors'
+          }
+        )
+        
+        if (sentResponse.ok && pendingResponse.ok) {
+          const sentData = await sentResponse.json()
+          const pendingData = await pendingResponse.json()
+          
+          console.log('=== DONNÉES BRUTES ===')
+          console.log('SMS envoyés (raw):', JSON.stringify(sentData, null, 2))
+          console.log('SMS en attente (raw):', JSON.stringify(pendingData, null, 2))
+          
+          // Vérifier la structure des données
+          console.log('=== STRUCTURE DES DONNÉES ===')
+          console.log('Est-ce que sentData est un tableau?', Array.isArray(sentData))
+          console.log('Est-ce que pendingData est un tableau?', Array.isArray(pendingData))
+          
+          if (Array.isArray(pendingData) && pendingData.length > 0) {
+            console.log('Premier SMS en attente:', JSON.stringify(pendingData[0], null, 2))
+          }
+          
+          // Vérifier et formater les données
+          const formatSmsDate = (dateStr: string | null | undefined): string => {
+            if (!dateStr) return formatDate(new Date());
+            
+            try {
+              const date = new Date(dateStr);
+              if (isNaN(date.getTime())) {
+                console.warn('Date invalide:', dateStr);
+                return formatDate(new Date());
+              }
+              return formatDate(date);
+            } catch (e) {
+              console.error('Erreur lors du formatage de la date:', dateStr, e);
+              return formatDate(new Date());
+            }
+          };
+          
+          // Créer un objet pour suivre les compteurs par date et statut
+          const dateCounts: Record<string, { sent: number; pending: number }> = {};
+          
+          // Fonction pour traiter les SMS (envoyés ou en attente)
+          const processSmsList = (smsList: any[], isPending: boolean) => {
+            (smsList || []).forEach((sms: any) => {
+              // Pour les SMS en attente, utiliser updatedAt comme date de référence
+              const date = formatSmsDate(isPending ? sms.updatedAt : (sms.createdAt || sms.updatedAt));
+              
+              if (!dateCounts[date]) {
+                dateCounts[date] = { sent: 0, pending: 0 };
+              }
+              
+              if (isPending) {
+                dateCounts[date].pending++;
+              } else {
+                dateCounts[date].sent++;
+              }
+            });
+          };
+          
+          // Traiter les SMS envoyés (si disponibles)
+          if (Array.isArray(sentData)) {
+            processSmsList(sentData, false);
+          } else if (sentData && Array.isArray(sentData.content)) {
+            processSmsList(sentData.content, false);
+          }
+          
+          // Traiter les SMS en attente
+          processSmsList(Array.isArray(pendingData) ? pendingData : [], true);
+          
+          // Convertir en tableau pour le graphique et trier par date
+          const formattedData = Object.entries(dateCounts)
+            .map(([date, counts]) => ({
+              date,
+              sent: counts.sent,
+              pending: counts.pending
+            }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+          
+          console.log('=== DONNÉES FORMATÉES ===');
+          console.log('Nombre de dates uniques:', formattedData.length);
+          console.log('Données formatées:', JSON.stringify(formattedData, null, 2));
+          
+          // Mettre à jour les compteurs totaux
+          const totalSent = formattedData.reduce((sum, item) => sum + item.sent, 0);
+          const totalPending = Array.isArray(pendingData) ? pendingData.length : 0;
+          
+          setSentSmsCount(totalSent);
+          setPendingSmsCount(totalPending);
+          setSmsData(formattedData);
+        } else {
+          console.error('Erreur lors de la récupération des données:', {
+            sentStatus: sentResponse.status,
+            pendingStatus: pendingResponse.status
+          })
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des SMS:', error)
+      } finally {
+        setLoadingSms(false)
+      }
+    }
+    
+    fetchSmsData()
+  }, [])
+
+  // Préparer les données pour le graphique
+  const getActivityData = useCallback(() => {
+    // Créer un tableau pour les 7 derniers jours
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date()
+      date.setDate(date.getDate() - (6 - i)) // 6-i pour avoir les 7 derniers jours (aujourd'hui inclus)
+      return {
+        date: formatDate(date),
+        dayName: getDayName(date).charAt(0).toUpperCase() + 
+                 getDayName(date).slice(1, 3) // Format: 'Lun', 'Mar', etc.
+      }
+    })
+
+    // Créer un objet pour stocker les compteurs par date
+    const dateCounts: Record<string, {sent: number, pending: number}> = {};
+    
+    // Initialiser toutes les dates avec des compteurs à 0
+    last7Days.forEach(day => {
+      dateCounts[day.date] = { sent: 0, pending: 0 };
+    });
+    
+    // Mettre à jour les compteurs avec les données existantes
+    smsData.forEach(sms => {
+      if (dateCounts[sms.date]) {
+        dateCounts[sms.date] = {
+          sent: sms.sent || 0,
+          pending: sms.pending || 0
+        };
+      }
+    });
+    
+    // Convertir en tableau pour le graphique
+    const dailyCounts = last7Days.map(day => ({
+      name: day.dayName,
+      date: day.date,
+      sent: dateCounts[day.date]?.sent || 0,
+      pending: dateCounts[day.date]?.pending || 0
+    }));
+
+    console.log('=== DONNÉES POUR LE GRAPHIQUE ===');
+    console.log(JSON.stringify(dailyCounts, null, 2));
+    
+    return dailyCounts;
+  }, [smsData])
+
+  const activityData = getActivityData()
 
   if (loading) {
     return (
@@ -138,68 +1153,37 @@ export default function DashboardPage() {
             Aperçu de votre activité et de vos performances
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher..."
-              className="w-full pl-9 md:w-[200px] lg:w-[300px]"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <div className="flex gap-2">
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Période" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7days">7 derniers jours</SelectItem>
-                <SelectItem value="30days">30 derniers jours</SelectItem>
-                <SelectItem value="90days">3 derniers mois</SelectItem>
-                <SelectItem value="year">Cette année</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="icon">
-              <Download className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Grille des cartes de métriques */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <MetricsCard
           title="Tickets ouverts"
-          value={ticketStats.OUVERT}
-          description="par rapport au mois dernier"
+          value={ticketsLoading ? "-" : openTicketsCount.toString()}
+          description="en attente de traitement"
           icon={<Ticket className="h-5 w-5 text-primary" />}
-          trend={{ value: "20%", isPositive: false }}
-          tooltip="Nombre de tickets actuellement ouverts"
+          tooltip={`${openTicketsCount} tickets ouverts nécessitant une attention`}
         />
         <MetricsCard
-          title="Tickets en cours"
-          value={ticketStats.EN_COURS}
-          description="par rapport au mois dernier"
+          title="SMS en attente"
+          value={loadingSms ? "-" : pendingSmsCount.toString()}
+          description="dans la file d'attente"
           icon={<RefreshCw className="h-5 w-5 text-primary" />}
-          trend={{ value: "5%", isPositive: false }}
-          tooltip="Tickets en cours de traitement"
+          tooltip={`${pendingSmsCount} SMS en attente d'envoi`}
         />
         <MetricsCard
           title="SMS envoyés"
-          value="1,234"
-          description="par rapport au mois dernier"
+          value={loadingSms ? "-" : sentSmsCount.toLocaleString()}
+          description="ce mois-ci"
           icon={<MessageSquare className="h-5 w-5 text-primary" />}
-          trend={{ value: "12%", isPositive: true }}
-          tooltip="Nombre total de SMS envoyés cette période"
+          tooltip={`${sentSmsCount} SMS envoyés ce mois-ci`}
         />
         <MetricsCard
           title="Clients actifs"
-          value="42"
-          description="par rapport au mois dernier"
+          value={clientsLoading ? "-" : activeClients.toString()}
+          description="sur la plateforme"
           icon={<UserCheck className="h-5 w-5 text-primary" />}
-          trend={{ value: "8%", isPositive: true }}
-          tooltip="Nombre de clients actifs sur la plateforme"
+          tooltip="Nombre de clients actuellement actifs"
         />
       </div>
 
@@ -219,12 +1203,6 @@ export default function DashboardPage() {
               Rapports
             </TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9">
-              <Filter className="mr-2 h-4 w-4" />
-              Filtres
-            </Button>
-          </div>
         </div>
 
         <TabsContent value="overview" className="space-y-4">
@@ -235,23 +1213,28 @@ export default function DashboardPage() {
                   <Activity className="h-5 w-5 text-muted-foreground" />
                   Activité récente
                 </CardTitle>
-                <CardDescription>Évolution des tickets et des SMS sur 7 jours</CardDescription>
+                <CardDescription>Évolution des SMS envoyés et en attente sur 7 jours</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={activityData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
+                {loadingSms ? (
+                  <div className="h-[300px] flex items-center justify-center">
+                    <p>Chargement des données SMS...</p>
+                  </div>
+                ) : (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={activityData}
+                        margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      >
                       <defs>
-                        <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#8884d8" stopOpacity={0.1}/>
+                        <linearGradient id="colorSent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
                         </linearGradient>
-                        <linearGradient id="colorSms" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#82ca9d" stopOpacity={0.1}/>
+                        <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
@@ -266,45 +1249,60 @@ export default function DashboardPage() {
                         axisLine={false}
                         tickLine={false}
                       />
+                      <Area 
+                        type="monotone" 
+                        dataKey="sent" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        fillOpacity={0.8} 
+                        fill="url(#colorSent)" 
+                        name="SMS Envoyés"
+                        activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="pending" 
+                        stroke="#f59e0b" 
+                        strokeWidth={2}
+                        fillOpacity={0.8} 
+                        fill="url(#colorPending)" 
+                        name="SMS En attente"
+                        activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
+                      />
                       <RechartsTooltip 
                         contentStyle={{
                           backgroundColor: 'white',
                           borderRadius: '0.5rem',
                           border: '1px solid #e5e7eb',
-                          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                         }}
+                        formatter={(value: number, name: string) => [`${value} ${name}`, '']}
+                        labelFormatter={(label) => `Jour: ${label}`}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="tickets" 
-                        stroke="#8884d8" 
-                        fillOpacity={1} 
-                        fill="url(#colorTickets)" 
-                        name="Tickets"
-                        strokeWidth={2}
+                      <Legend 
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                        formatter={(value, entry, index) => (
+                          <span className="text-sm text-muted-foreground">
+                            {value}
+                          </span>
+                        )}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="sms" 
-                        stroke="#82ca9d" 
-                        fillOpacity={1} 
-                        fill="url(#colorSms)" 
-                        name="SMS"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Section Répartition des tickets */}
             <Card className="col-span-3">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChartIcon className="h-5 w-5 text-muted-foreground" />
                   Répartition des tickets
                 </CardTitle>
-                <CardDescription>Statut actuel des tickets</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
@@ -314,40 +1312,26 @@ export default function DashboardPage() {
                         data={ticketData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percent }) => 
-                          `${name}: ${(percent * 100).toFixed(0)}%`
-                        }
                         labelLine={false}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
                       >
                         {ticketData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={COLORS[index % COLORS.length]} 
-                            stroke="#fff"
-                            strokeWidth={2}
-                          />
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <RechartsTooltip 
-                        contentStyle={{
-                          backgroundColor: 'white',
-                          borderRadius: '0.5rem',
-                          border: '1px solid #e5e7eb',
-                          boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.1)'
-                        }}
                         formatter={(value, name, props) => {
-                          const percent = (Number(value) / ticketData.reduce((a, b) => a + b.value, 0)) * 100
-                          return [`${name}: ${value} (${percent.toFixed(1)}%)`, '']
+                          const percent = (Number(value) / ticketData.reduce((a, b) => a + b.value, 0)) * 100;
+                          return [`${value} tickets (${percent.toFixed(1)}%)`, name];
                         }}
                       />
                       <Legend 
-                        layout="horizontal"
-                        verticalAlign="bottom"
-                        align="center"
+                        layout="vertical"
+                        verticalAlign="middle"
+                        align="right"
                         formatter={(value, entry, index) => (
                           <span className="text-sm text-muted-foreground">
                             {value}
@@ -365,11 +1349,40 @@ export default function DashboardPage() {
         <TabsContent value="analytics" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Analyse détaillée</CardTitle>
-              <CardDescription>Données et métriques avancées</CardDescription>
+              <CardTitle>Analyse annuelle des SMS</CardTitle>
+              <CardDescription>Statistiques annuelles des messages envoyés</CardDescription>
             </CardHeader>
-            <CardContent className="h-[400px] flex items-center justify-center">
-              <p className="text-muted-foreground">Section d'analyse en cours de développement</p>
+            <CardContent className="h-[400px]">
+              {smsStats.yearlyData && smsStats.yearlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={smsStats.yearlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="year" 
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      width={40}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`${value} SMS`, 'Messages envoyés']}
+                      labelFormatter={(label) => `Année: ${label}`}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="count" 
+                      name="Messages envoyés"
+                      fill="#3b82f6"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-muted-foreground">Chargement des données annuelles...</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -377,11 +1390,43 @@ export default function DashboardPage() {
         <TabsContent value="reports" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Rapports</CardTitle>
-              <CardDescription>Générez et consultez vos rapports</CardDescription>
+              <CardTitle>Clients les plus actifs</CardTitle>
+              <CardDescription>Top 5 des clients avec le plus de SMS en attente</CardDescription>
             </CardHeader>
-            <CardContent className="h-[400px] flex items-center justify-center">
-              <p className="text-muted-foreground">Section des rapports en cours de développement</p>
+            <CardContent>
+              {loadingTopActiveClients ? (
+                <div className="flex items-center justify-center h-[200px]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : topActiveClients.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground mb-2">
+                    <div>Client</div>
+                    <div className="text-right">Messages</div>
+                    <div className="text-right">Dernière activité</div>
+                  </div>
+                  {topActiveClients.map((client) => (
+                    <div key={client.clientId} className="grid grid-cols-3 gap-4 items-center">
+                      <div className="font-medium">
+                        <div className="text-sm">{client.emetteur}</div>
+                        <div className="text-xs text-muted-foreground">ID: {client.clientId}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-flex items-center justify-center h-6 px-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                          {client.messageCount}
+                        </span>
+                      </div>
+                      <div className="text-right text-sm text-muted-foreground">
+                        {formatRelativeTime(client.lastActivity)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center">
+                  <p className="text-muted-foreground">Aucune activité client récente</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -390,62 +1435,116 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Ticket className="h-5 w-5 text-muted-foreground" />
-                Derniers tickets
-              </CardTitle>
-              <Button variant="ghost" size="sm" className="h-8">
-                Voir tout
-                <ArrowUpRight className="ml-1 h-4 w-4" />
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-muted-foreground" />
+              Activité SMS récente
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentTickets.length > 0 ? (
-                recentTickets.map((ticket) => (
-                  <Card key={ticket.id} className="overflow-hidden hover:shadow-sm transition-shadow">
-                    <div className="p-4">
-                      <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Ticket className="h-5 w-5 text-primary" />
+              <div className="overflow-hidden border rounded-lg">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Émetteur
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Statut
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentSmsLoading ? (
+                      // Afficher un indicateur de chargement
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                          <div className="flex justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium leading-none">{ticket.titre}</h4>
-                            <Badge 
-                              variant={ticket.statut === 'OUVERT' ? 'destructive' : ticket.statut === 'EN_COURS' ? 'warning' : 'success'}
-                              className="text-xs"
-                            >
-                              {ticket.statut.replace('_', ' ')}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {ticket.description}
-                          </p>
-                          <div className="mt-2 flex items-center text-xs text-muted-foreground">
-                            <span>{format(new Date(ticket.createdAt), 'PP', { locale: fr })}</span>
-                            <span className="mx-2">•</span>
-                            <span>{ticket.client?.name || 'Client inconnu'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Ticket className="h-12 w-12 text-muted-foreground mb-2" />
-                  <h3 className="text-lg font-medium">Aucun ticket récent</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Créez votre premier ticket pour commencer
-                  </p>
-                  <Button className="mt-4">Créer un ticket</Button>
-                </div>
-              )}
+                          <p className="mt-2">Chargement des SMS récents...</p>
+                        </td>
+                      </tr>
+                    ) : recentSms.length > 0 ? (
+                      // Afficher les vrais SMS
+                      recentSms.map((sms) => {
+                        const statusText = {
+                          'ENVOYE': 'Envoyé',
+                          'PENDING': 'En attente',
+                          'DELIVERED': 'Livré',
+                          'FAILED': 'Échec'
+                        }[sms.statut] || sms.statut;
+                        
+                        const statusColor = {
+                          'ENVOYE': 'bg-blue-100 text-blue-800',
+                          'PENDING': 'bg-yellow-100 text-yellow-800',
+                          'DELIVERED': 'bg-green-100 text-green-800',
+                          'FAILED': 'bg-red-100 text-red-800'
+                        }[sms.statut] || 'bg-gray-100 text-gray-800';
+                        
+                        
+                        // Déterminer le libellé du type
+                        const typeLabel = {
+                          'UNIDES': 'SMS Unique',
+                          'MULDESP': 'SMS Programmés'
+                        }[sms.type] || sms.type;
+                        
+                        // Couleur pour le type
+                        const typeColor = {
+                          'UNIDES': 'bg-purple-100 text-purple-800',
+                          'MULDESP': 'bg-indigo-100 text-indigo-800'
+                        }[sms.type] || 'bg-gray-100 text-gray-800';
+                        
+                        return (
+                          <tr key={sms.ref} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{sms.emetteur}</div>
+                              {sms.type === 'MULDESP' && (
+                                <div className="mt-1 text-xs text-gray-500">
+                                  {sms.dateDebutEnvoi && (
+                                    <div>Début: {format(new Date(sms.dateDebutEnvoi), 'dd/MM/yyyy HH:mm', { locale: fr })}</div>
+                                  )}
+                                  {sms.dateFinEnvoi && (
+                                    <div>Fin: {format(new Date(sms.dateFinEnvoi), 'dd/MM/yyyy HH:mm', { locale: fr })}</div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}`}>
+                                {statusText}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeColor}`}>
+                                {typeLabel}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {format(new Date(sms.updatedAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      // Aucun SMS à afficher
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                          <MessageSquare className="mx-auto h-12 w-12 text-gray-300" />
+                          <p className="mt-2">Aucun SMS récent</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
             </div>
           </CardContent>
         </Card>
@@ -453,58 +1552,38 @@ export default function DashboardPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                Statistiques SMS
+              <CardTitle className="flex items-center justify-between">
+                <span>Statistiques SMS</span>
+                <div className={`flex items-center text-sm ${smsStats.trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  <span>{smsStats.trend >= 0 ? '+' : ''}{smsStats.trend}%</span>
+                  {smsStats.trend >= 0 ? (
+                    <ArrowUpRight className="ml-1 h-4 w-4" />
+                  ) : (
+                    <ArrowDownRight className="ml-1 h-4 w-4" />
+                  )}
+                </div>
               </CardTitle>
+              <div className="space-y-2">
+                <Progress value={smsStats.progress} className="h-2 [&>div]:bg-blue-600" />
+                <p className="text-xs text-muted-foreground">
+                  {smsStats.trend >= 0 ? 'Hausse' : 'Baisse'} de {Math.abs(smsStats.trend)}% par rapport au mois dernier
+                </p>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Crédits restants</span>
-                    <span className="text-sm font-semibold">1,245</span>
+                    <span className="text-sm font-medium">SMS envoyés</span>
+                    <span className="text-sm font-semibold">{smsStats.current} ce mois-ci</span>
                   </div>
-                  <Progress value={65} className="h-2" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Environ 30 jours restants
-                  </p>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Taux de livraison</span>
-                    <div className="flex items-center">
-                      <span className="text-sm font-semibold">98.5%</span>
-                      <ArrowUpRight className="ml-1 h-4 w-4 text-green-500" />
-                    </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Mois dernier: {smsStats.previous}</span>
+                    <span>Évolution: {smsStats.trend >= 0 ? '+' : ''}{smsStats.trend}%</span>
                   </div>
-                  <Progress value={98.5} className="h-2" indicatorClassName="bg-green-500" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    +0.5% par rapport au mois dernier
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Clients actifs</span>
-                    <span className="text-sm font-semibold">42/50</span>
-                  </div>
-                  <Progress value={84} className="h-2" indicatorClassName="bg-purple-500" />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    8 places disponibles
-                  </p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="border-t px-6 py-4">
-              <Button className="w-full" size="sm">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Acheter des crédits
-              </Button>
-            </CardFooter>
           </Card>
 
           <Card>
@@ -515,27 +1594,94 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { id: 1, action: 'Nouveau ticket créé', time: '2 min', user: 'John Doe' },
-                { id: 2, action: 'SMS envoyé', time: '10 min', user: 'Jane Smith' },
-                { id: 3, action: 'Ticket résolu', time: '1h', user: 'Admin' },
-                { id: 4, action: 'Nouveau client', time: '2h', user: 'System' },
-              ].map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="h-2 w-2 rounded-full bg-primary" />
+              <div className="space-y-4">
+                {billingLoading ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm">
-                      <span className="font-medium">{activity.action}</span>
-                      <span className="text-muted-foreground"> par {activity.user}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Il y a {activity.time}
-                    </p>
+                ) : billingData.length > 0 ? (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-green-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm">
+                        <span className="font-medium">Période de facturation</span>
+                        <span className="text-muted-foreground"> {billingData[0].mois}/{billingData[0].exercice.annee}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Du {format(new Date(billingData[0].dateDebutConsommation), 'd MMMM yyyy', { locale: fr })}
+                        {' au '}
+                        {format(new Date(billingData[0].dateFinConsommation), 'd MMMM yyyy', { locale: fr })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Date de génération: {format(new Date(billingData[0].dateGenerationFacture), 'd MMMM yyyy', { locale: fr })}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ) : null}
+                
+                {loadingTicket ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                ) : latestTicket ? (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm">
+                        <span className="font-medium">Nouveau ticket créé</span>
+                        <span className="text-muted-foreground"> par {latestTicket.emailClient}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatRelativeTime(latestTicket.createdAt)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {latestTicket.titre}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucun ticket récent</p>
+                )}
+
+                {loadingCreditRequest ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  </div>
+                ) : latestCreditRequest ? (
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                      <div className="h-2 w-2 rounded-full bg-amber-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm">
+                        <span className="font-medium">
+                          {latestCreditRequest.status === 'PENDING' ? 'Commande en attente' : 'Dernière commande'}
+                        </span>
+                        <span className="text-muted-foreground"> par {latestCreditRequest.makerEmail}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatRelativeTime(latestCreditRequest.createdAt)}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
+                          {latestCreditRequest.quantity} crédits
+                        </span>
+                        {latestCreditRequest.status === 'PENDING' && (
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                            En attente
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucune commande récente</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

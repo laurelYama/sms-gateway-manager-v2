@@ -1,4 +1,5 @@
 import { getToken } from './auth'
+import { API_BASE_URL } from '@/lib/config'
 
 export interface ClientInfo {
   idclients: string
@@ -24,7 +25,7 @@ export async function getClientById(clientId: string): Promise<ClientInfo | null
   if (!token) return null
 
   try {
-    const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/clients/${clientId}`, {
+    const response = await fetch(`${API_BASE_URL}/api/V1/clients/${clientId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'

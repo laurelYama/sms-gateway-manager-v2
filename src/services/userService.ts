@@ -1,4 +1,5 @@
 import { getToken } from "@/lib/auth";
+import { API_BASE_URL } from "@/lib/config";
 
 export interface UserProfile {
   idManager: string;
@@ -23,7 +24,7 @@ export const userService = {
     }
 
     const response = await fetch(
-      `https://api-smsgateway.solutech-one.com/api/V1/managers/${userId}`,
+      `${API_BASE_URL}/api/V1/managers/${userId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -49,7 +50,7 @@ export const userService = {
     }
 
     const response = await fetch(
-      `https://api-smsgateway.solutech-one.com/api/V1/managers/${userId}/change-password`,
+      `${API_BASE_URL}/api/V1/managers/${userId}/change-password`,
       {
         method: "PATCH",
         headers: {

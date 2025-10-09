@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Calendar as CalendarIcon } from "lucide-react"
-import { format, isSameDay } from "date-fns"
+import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import { useState, useEffect } from "react"
 import { Calendrier } from "./types"
@@ -62,53 +62,7 @@ export function CalendrierFacturation({
         'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
     ]
 
-    const getDateStatus = (date: Date) => {
-        try {
-            if (!date || !(date instanceof Date) || isNaN(date.getTime())) return null
-            
-            // Vérifier que calendrier est défini et est un tableau
-            if (!Array.isArray(calendrier)) {
-                console.warn('calendrier n\'est pas un tableau valide');
-                return null;
-            }
-
-            const event = calendrier.find(cal => {
-                if (!cal?.dateGenerationFacture) return false
-                try {
-                    const eventDate = new Date(cal.dateGenerationFacture)
-                    return isSameDay(eventDate, date)
-                } catch (e) {
-                    console.error('Erreur lors du traitement de la date:', e)
-                    return false
-                }
-            })
-
-            if (!event) return null
-
-            // Vérifier que les dates sont valides avant de les formater
-            let dateDebut = 'Date inconnue';
-            let dateFin = 'Date inconnue';
-            
-            try {
-                dateDebut = event.dateDebutConsommation 
-                    ? format(new Date(event.dateDebutConsommation), 'dd/MM/yyyy')
-                    : 'Date inconnue';
-                dateFin = event.dateFinConsommation 
-                    ? format(new Date(event.dateFinConsommation), 'dd/MM/yyyy')
-                    : 'Date inconnue';
-            } catch (e) {
-                console.error('Erreur lors du formatage des dates:', e);
-            }
-
-            return {
-                status: event.statut || 'BROUILLON',
-                tooltip: `Facturation du ${dateDebut} au ${dateFin}`
-            }
-        } catch (error) {
-            console.error('Erreur dans getDateStatus:', error)
-            return null
-        }
-    }
+    // Plus de statut dans les cellules du calendrier; on garde un affichage simple du jour
 
     const today = new Date();
     const currentDay = today.getDate();
@@ -127,8 +81,6 @@ export function CalendrierFacturation({
             dayMonth === today.getMonth() &&
             dayYear === today.getFullYear();
 
-        const status = getDateStatus(day);
-
         return (
             <div className="relative flex flex-col items-center p-1">
                 <div className={`h-6 w-6 flex items-center justify-center rounded-full text-xs
@@ -137,16 +89,6 @@ export function CalendrierFacturation({
                 `}>
                     {dayNumber}
                 </div>
-                {status && (
-                    <div
-                        className={`h-1.5 w-1.5 rounded-full mt-1 ${
-                            status.status === 'GENEREE' ? 'bg-blue-500' :
-                                status.status === 'ENVOYEE' ? 'bg-green-500' :
-                                    status.status === 'PAYEE' ? 'bg-purple-500' : 'bg-gray-400'
-                        }`}
-                        title={status.tooltip}
-                    />
-                )}
             </div>
         )
     }
@@ -163,43 +105,39 @@ export function CalendrierFacturation({
 
     return (
         <Card className="mb-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5 text-blue-500" />
-                    <CardTitle>Calendrier de facturation</CardTitle>
-                </div>
-                <div className="flex gap-2">
-                    <Select
-                        value={selectedMonth?.toString() || '0'}
-                        onValueChange={(value) => handleMonthChange(parseInt(value))}
-                    >
-                        <SelectTrigger className="w-32">
-                            <SelectValue placeholder="Mois" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {months.map((month, index) => (
-                                <SelectItem key={month} value={index.toString()}>
-                                    {month}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={selectedYear?.toString() || new Date().getFullYear().toString()}
-                        onValueChange={(value) => handleYearChange(parseInt(value))}
-                    >
-                        <SelectTrigger className="w-24">
-                            <SelectValue placeholder="Année" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {years.map((year) => (
-                                <SelectItem key={year} value={year.toString()}>
-                                    {year}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+            <CardHeader className="flex items-center justify-end space-y-0 pb-4">
+              <div className="flex gap-2">
+                <Select
+                  value={selectedMonth?.toString() || '0'}
+                  onValueChange={(value) => handleMonthChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Mois" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month, index) => (
+                      <SelectItem key={month} value={index.toString()}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={selectedYear?.toString() || new Date().getFullYear().toString()}
+                  onValueChange={(value) => handleYearChange(parseInt(value))}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue placeholder="Année" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardHeader>
 
             <CardContent>
@@ -230,25 +168,7 @@ export function CalendrierFacturation({
                     </div>
                 </div>
 
-                {/* Légende compacte */}
-                <div className="flex justify-center gap-3 mb-6 text-xs">
-                    <div className="flex items-center gap-1">
-                        <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                        <span>Générée</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        <span>Envoyée</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                        <span>Payée</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <div className="h-2 w-2 rounded-full bg-gray-400"></div>
-                        <span>Brouillon</span>
-                    </div>
-                </div>
+                {/* Légende supprimée (pas de statut affiché) */}
 
                 {/* Résumé des factures */}
                 <div className="border-t pt-4">
@@ -281,22 +201,10 @@ export function CalendrierFacturation({
                                     <TableRow>
                                         <TableHead className="h-8 px-2">Mois</TableHead>
                                         <TableHead className="h-8 px-2">Période</TableHead>
-                                        <TableHead className="h-8 px-2">Génération</TableHead>
-                                        <TableHead className="h-8 px-2">Statut</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {calendrier.map((item) => {
-                                        const statusConfig = {
-                                            'GENEREE': { color: 'bg-blue-100 text-blue-800', label: 'Générée' },
-                                            'ENVOYEE': { color: 'bg-green-100 text-green-800', label: 'Envoyée' },
-                                            'PAYEE': { color: 'bg-purple-100 text-purple-800', label: 'Payée' },
-                                            'BROUILLON': { color: 'bg-gray-100 text-gray-800', label: 'Brouillon' },
-                                            'ANNULEE': { color: 'bg-red-100 text-red-800', label: 'Annulée' }
-                                        };
-
-                                        const status = statusConfig[item.statut || 'BROUILLON'];
-
                                         return (
                                             <TableRow key={item.id} className="h-8 hover:bg-muted/50">
                                                 <TableCell className="px-2 py-1">
@@ -305,14 +213,6 @@ export function CalendrierFacturation({
                                                 <TableCell className="px-2 py-1">
                                                     {format(new Date(item.dateDebutConsommation), 'dd MMM', { locale: fr })} -{' '}
                                                     {format(new Date(item.dateFinConsommation), 'dd MMM', { locale: fr })}
-                                                </TableCell>
-                                                <TableCell className="px-2 py-1">
-                                                    {format(new Date(item.dateGenerationFacture), 'dd MMM yyyy', { locale: fr })}
-                                                </TableCell>
-                                                <TableCell className="px-2 py-1">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs ${status.color}`}>
-                                                        {status.label}
-                                                    </span>
                                                 </TableCell>
                                             </TableRow>
                                         );

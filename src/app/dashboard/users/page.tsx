@@ -10,6 +10,7 @@ import { UsersTable } from './components/UsersTable'
 import { UserForm } from './components/UserForm'
 import { UserFilters } from './components/UserFilters'
 import { Manager, UserFormData } from './types'
+import { API_BASE_URL } from '@/lib/config'
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import {
 
 export default function UsersPage() {
   console.log('Rendu de la page UsersPage')
-  const { token, isAuthenticated, loading: authLoading } = useAuth()
+  const { token, isAuthenticated, loading: authLoading, user } = useAuth()
   const router = useRouter()
   
   // Rediriger vers la page de connexion si non authentifié
@@ -48,6 +49,13 @@ export default function UsersPage() {
         console.log('Non authentifié, redirection vers /login')
         router.push('/login')
       } else {
+        // Vérifier le rôle - Seul le SUPER_ADMIN peut accéder à cette section
+        if (user?.role !== 'SUPER_ADMIN') {
+          console.log('Rôle insuffisant, redirection vers /unauthorized')
+          toast.error('Accès réservé aux SUPER_ADMIN')
+          router.push('/unauthorized')
+          return
+        }
         // Charger les données si l'utilisateur est authentifié
         console.log('Utilisateur authentifié, chargement des données...')
         fetchManagers()
@@ -60,7 +68,7 @@ export default function UsersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [currentManager, setCurrentManager] = useState<Manager | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [roleFilter, setRoleFilter] = useState<'' | 'ADMIN' | 'SUPER_ADMIN'>('')
+  const [roleFilter, setRoleFilter] = useState<'' | 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR'>('')
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(5) // 5 lignes par défaut
   const [totalPages, setTotalPages] = useState(0)
@@ -104,8 +112,8 @@ export default function UsersPage() {
     
     // Liste des URLs à essayer en cas d'échec
     const baseUrls = [
-      'https://api-smsgateway.solutech-one.com/api/V1/managers',
-      'https://api-smsgateway.solutech-one.com/api/managers'
+      `${API_BASE_URL}/api/V1/managers`,
+      `${API_BASE_URL}/api/managers`
     ];
     
     let lastError = null;
@@ -440,7 +448,7 @@ export default function UsersPage() {
         }
 
         try {
-          const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/managers/${id}/suspend`, {
+          const response = await fetch(`${API_BASE_URL}/api/V1/managers/${id}/suspend`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -498,7 +506,7 @@ export default function UsersPage() {
             )
           )
 
-          const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/managers/${id}/reactivate`, {
+          const response = await fetch(`${API_BASE_URL}/api/V1/managers/${id}/reactivate`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -545,7 +553,25 @@ export default function UsersPage() {
             )
           )
 
-          const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/managers/${id}/archive`, {
+          // 1. Désactiver d'abord l'URL de désarchivage
+          try {
+            await fetch(`${API_BASE_URL}/api/V1/managers/${id}/unarchive`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              credentials: 'include'
+            });
+            console.log('URL de désarchivage désactivée avec succès');
+          } catch (error) {
+            console.error('Erreur lors de la désactivation de l\'URL de désarchivage:', error);
+            // On continue quand même l'archivage même si la désactivation de l'URL échoue
+          }
+
+          // 2. Ensuite, procéder à l'archivage
+          const response = await fetch(`${API_BASE_URL}/api/V1/managers/${id}/archive`, {
             method: 'PUT',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -553,7 +579,7 @@ export default function UsersPage() {
               'Accept': 'application/json'
             },
             credentials: 'include'
-          })
+          });
 
           if (!response.ok) {
             const error = await response.json().catch(() => ({}))
@@ -576,8 +602,8 @@ export default function UsersPage() {
 
   const handleSubmit = async (data: any) => {
     if (!token) return
-
-    const baseUrl = 'https://api-smsgateway.solutech-one.com/api/V1/managers'
+    
+    const baseUrl = `${API_BASE_URL}/api/V1/managers`
     const url = currentManager 
       ? `${baseUrl}/${currentManager.idManager}`
       : `${baseUrl}/create`

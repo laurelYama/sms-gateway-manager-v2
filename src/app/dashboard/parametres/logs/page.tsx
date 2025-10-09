@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getToken } from '@/lib/auth';
+import { getToken, useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -68,10 +68,24 @@ const getActionColor = (action: string): string => {
 
 export default function AuditLogsPage() {
   const router = useRouter();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [logView, setLogView] = useState<LogViewType>('all');
+
+  // Guard: only SUPER_ADMIN can access
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+    if (user?.role !== 'SUPER_ADMIN') {
+      toast.error('Accès réservé aux SUPER_ADMIN');
+      router.push('/unauthorized');
+    }
+  }, [authLoading, isAuthenticated, router, user]);
 
   // Fonction pour exporter les logs en Excel
   const exportToExcel = () => {
@@ -202,17 +216,9 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-          <span className="sr-only">Retour</span>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Journaux d'activité</h1>
-          <p className="text-muted-foreground">
-            Consultez les activités récentes sur la plateforme
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Journaux d'activité</h1>
+        <p className="text-muted-foreground">Consultez les activités récentes sur la plateforme</p>
       </div>
 
       <Card>

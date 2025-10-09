@@ -1,4 +1,4 @@
-import { MoreHorizontal, Edit, Pause, Play, FileText, CreditCard } from "lucide-react"
+import { MoreHorizontal, Edit, Pause, Play, FileText, CreditCard, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -9,6 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Client } from "@/types/client"
+import { useAuth } from "@/lib/auth"
+import { canEdit, canSuspend } from "@/lib/permissions"
 
 interface ClientActionsProps {
   client: Client
@@ -17,6 +19,17 @@ interface ClientActionsProps {
 }
 
 export function ClientActions({ client, onEdit, onToggleStatus }: ClientActionsProps) {
+  const { user } = useAuth()
+  const canPerformActions = user?.role !== 'AUDITEUR'
+  
+  if (!canPerformActions) {
+    return (
+      <Button variant="ghost" className="h-8 w-8 p-0" disabled>
+        <Eye className="h-4 w-4" />
+      </Button>
+    )
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -27,26 +40,30 @@ export function ClientActions({ client, onEdit, onToggleStatus }: ClientActionsP
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onEdit(client)}>
-          <Edit className="mr-2 h-4 w-4" />
-          <span>Modifier</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem 
-          onClick={() => onToggleStatus(client)}
-          className={client.statutCompte === 'ACTIF' ? 'text-amber-600' : 'text-green-600'}
-        >
-          {client.statutCompte === 'ACTIF' ? (
-            <>
-              <Pause className="mr-2 h-4 w-4" />
-              <span>Suspendre</span>
-            </>
-          ) : (
-            <>
-              <Play className="mr-2 h-4 w-4" />
-              <span>Activer</span>
-            </>
-          )}
-        </DropdownMenuItem>
+        {canEdit(user) && (
+          <DropdownMenuItem onClick={() => onEdit(client)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Modifier</span>
+          </DropdownMenuItem>
+        )}
+        {canSuspend(user) && (
+          <DropdownMenuItem 
+            onClick={() => onToggleStatus(client)}
+            className={client.statutCompte === 'ACTIF' ? 'text-amber-600' : 'text-green-600'}
+          >
+            {client.statutCompte === 'ACTIF' ? (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                <span>Suspendre</span>
+              </>
+            ) : (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                <span>Activer</span>
+              </>
+            )}
+          </DropdownMenuItem>
+        )}
         
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Détails</DropdownMenuLabel>

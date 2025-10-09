@@ -1,6 +1,6 @@
 import { Referentiel, ReferentielFormData } from '@/app/dashboard/referentiels/types';
-
-const API_BASE_URL = 'https://api-smsgateway.solutech-one.com/api/v1/referentiel';
+import { API_BASE_URL } from '@/lib/config';
+const REFERENTIALS_BASE = `${API_BASE_URL}/api/v1/referentiel`;
 
 interface PaginatedResponse<T> {
   content: T[];
@@ -12,7 +12,7 @@ interface PaginatedResponse<T> {
 
 export async function getReferentials(): Promise<Referentiel[]> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(`${API_BASE_URL}/all`, {
+  const response = await fetch(`${REFERENTIALS_BASE}/all`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -29,7 +29,7 @@ export async function getReferentials(): Promise<Referentiel[]> {
 
 export async function searchReferentials(query: string): Promise<PaginatedResponse<Referentiel>> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(`${API_BASE_URL}/search?q=${encodeURIComponent(query)}`, {
+  const response = await fetch(`${REFERENTIALS_BASE}/search?q=${encodeURIComponent(query)}`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ export async function searchReferentials(query: string): Promise<PaginatedRespon
 
 export async function createReferential(data: ReferentielFormData): Promise<Referentiel> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(API_BASE_URL, {
+  const response = await fetch(REFERENTIALS_BASE, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -65,7 +65,7 @@ export async function createReferential(data: ReferentielFormData): Promise<Refe
 
 export async function updateReferential(id: number, data: ReferentielFormData): Promise<Referentiel> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(`${API_BASE_URL}/${id}`, {
+  const response = await fetch(`${REFERENTIALS_BASE}/${id}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -99,7 +99,7 @@ export async function deleteReferential(id: number): Promise<void> {
 
 export async function getCategories(): Promise<string[]> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(`${API_BASE_URL}/categories`, {
+  const response = await fetch(`${REFERENTIALS_BASE}/categories`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ export async function getCategories(): Promise<string[]> {
 
 export async function createBatchReferentials(data: ReferentielFormData[]): Promise<Referentiel[]> {
   const token = localStorage.getItem('authToken');
-  const response = await fetch(`${API_BASE_URL}/batch`, {
+  const response = await fetch(`${REFERENTIALS_BASE}/batch`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,

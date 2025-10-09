@@ -66,19 +66,44 @@ export function clearToken(): void {
 // Décoder le token JWT
 export function decodeToken(token: string): UserToken | null {
     try {
-        const payload = token.split('.')[1];
+        // Vérifier que le token est bien formaté
+        if (!token || typeof token !== 'string') {
+            console.error('Token invalide ou manquant');
+            return null;
+        }
+        
+        // Séparer les parties du token
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            console.error('Format de token JWT invalide');
+            return null;
+        }
+        
+        // Préparer et décoder la partie payload
+        const payload = parts[1];
         const base64 = payload.replace(/\-/g, '+').replace(/\_/g, '/');
-        const decoded = atob(base64);
+        
+        // Décoder en base64 et gérer les caractères spéciaux
+        const decoded = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+        );
+        
+        // Parser le JSON décodé
         const userData = JSON.parse(decoded);
         
         // Log détaillé du rôle avant et après traitement
-        console.group('Décodage du token:');
-        console.log('Token complet décodé:', userData);
-        console.log('Rôle dans le token:', userData.role);
-        console.log('Type du rôle:', typeof userData.role);
-        console.groupEnd();
+        if (process.env.NODE_ENV === 'development') {
+            console.group('Décodage du token:');
+            console.log('Token complet décodé:', userData);
+            console.log('Rôle dans le token:', userData?.role);
+            console.log('Type du rôle:', typeof userData?.role);
+            console.groupEnd();
+        }
         
-        return userData;
+        return userData || null;
     } catch (error) {
         console.error("Erreur lors du décodage du token:", error);
         return null;

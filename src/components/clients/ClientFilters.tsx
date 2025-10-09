@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/lib/auth"
 
 interface ClientFiltersProps {
   statusFilter: "ALL" | "ACTIF" | "SUSPENDU"
@@ -25,6 +26,9 @@ export function ClientFilters({
   searchQuery,
   onSearchChange,
 }: ClientFiltersProps) {
+  const { user } = useAuth()
+  const canAddClient = user?.role !== 'AUDITEUR'
+
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
@@ -43,10 +47,12 @@ export function ClientFilters({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={onAddClient} className="whitespace-nowrap">
-            <Plus className="h-4 w-4 mr-2" />
-            Ajouter un client
-          </Button>
+          {canAddClient && (
+            <Button onClick={onAddClient} className="whitespace-nowrap">
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un client
+            </Button>
+          )}
 
           <Button
             variant="outline"

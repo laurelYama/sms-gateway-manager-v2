@@ -3,10 +3,12 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MoreHorizontal, Edit, Trash2, Loader2, Pause, Play, Archive, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { MoreHorizontal, Edit, Trash2, Loader2, Pause, Play, Archive, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Manager, UserStatus } from "../types"
+import { useAuth } from "@/lib/auth"
+import { canEdit, canDelete, canSuspend } from "@/lib/permissions"
 
 interface UsersTableProps {
   managers: Manager[]
@@ -73,6 +75,8 @@ export function UsersTable({
                 return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Administrateur</Badge>
             case 'MANAGER':
                 return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Gestionnaire</Badge>
+            case 'AUDITEUR':
+                return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Auditeur</Badge>
             default:
                 return <Badge variant="outline">{role || 'Non défini'}</Badge>
         }
@@ -100,10 +104,15 @@ export function UsersTable({
     }
     
     // Vérifie si l'utilisateur est actif
+    const { user: currentUser } = useAuth();
+    
     const isUserActive = (manager: Manager) => {
         const status = (manager.statutCompte || manager.etat || '').toUpperCase();
         return status === 'ACTIF';
     }
+    
+    // Vérifie si l'utilisateur actuel peut effectuer des actions
+    const canPerformActions = currentUser?.role !== 'AUDITEUR';
 
     if (loading && managers.length === 0) {
         return (
@@ -156,52 +165,60 @@ export function UsersTable({
                                 <TableCell>{getRoleBadge(manager.role)}</TableCell>
                                 <TableCell>{getStatusBadge(manager)}</TableCell>
                                 <TableCell>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                <span className="sr-only">Ouvrir le menu</span>
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem 
-                                                onClick={() => onEdit(manager.idManager)}
-                                                className="cursor-pointer"
-                                            >
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                Modifier
-                                            </DropdownMenuItem>
-                                            
-                                            {isUserActive(manager) ? (
-                                                <DropdownMenuItem 
-                                                    onClick={() => onSuspend(manager.idManager)}
-                                                    className="cursor-pointer text-amber-600"
-                                                >
-                                                    <Pause className="mr-2 h-4 w-4" />
-                                                    Suspendre
-                                                </DropdownMenuItem>
-                                            ) : (
-                                                <DropdownMenuItem 
-                                                    onClick={() => onReactivate(manager.idManager)}
-                                                    className="cursor-pointer text-green-600"
-                                                >
-                                                    <Play className="mr-2 h-4 w-4" />
-                                                    Activer
-                                                </DropdownMenuItem>
-                                            )}
-                                            
-                                            {manager.status !== 'ARCHIVED' && (
-                                                <DropdownMenuItem 
-                                                    onClick={() => onArchive(manager.idManager)}
-                                                    className="cursor-pointer text-blue-600"
-                                                >
-                                                    <Archive className="mr-2 h-4 w-4" />
-                                                    Archiver
-                                                </DropdownMenuItem>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {canPerformActions ? (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Ouvrir le menu</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                {canEdit(currentUser) && (
+                                                    <DropdownMenuItem 
+                                                        onClick={() => onEdit(manager.idManager)}
+                                                        className="cursor-pointer"
+                                                    >
+                                                        <Edit className="mr-2 h-4 w-4" />
+                                                        Modifier
+                                                    </DropdownMenuItem>
+                                                )}
+                                                
+                                                {canSuspend(currentUser) && isUserActive(manager) ? (
+                                                    <DropdownMenuItem 
+                                                        onClick={() => onSuspend(manager.idManager)}
+                                                        className="cursor-pointer text-amber-600"
+                                                    >
+                                                        <Pause className="mr-2 h-4 w-4" />
+                                                        Suspendre
+                                                    </DropdownMenuItem>
+                                                ) : canSuspend(currentUser) && !isUserActive(manager) ? (
+                                                    <DropdownMenuItem 
+                                                        onClick={() => onReactivate(manager.idManager)}
+                                                        className="cursor-pointer text-green-600"
+                                                    >
+                                                        <Play className="mr-2 h-4 w-4" />
+                                                        Activer
+                                                    </DropdownMenuItem>
+                                                ) : null}
+                                                
+                                                {canDelete(currentUser) && manager.status !== 'ARCHIVED' && (
+                                                    <DropdownMenuItem 
+                                                        onClick={() => onArchive(manager.idManager)}
+                                                        className="cursor-pointer text-blue-600"
+                                                    >
+                                                        <Archive className="mr-2 h-4 w-4" />
+                                                        Archiver
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    ) : (
+                                        <Button variant="ghost" className="h-8 w-8 p-0" disabled>
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))

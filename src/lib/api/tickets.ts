@@ -1,7 +1,8 @@
 import { Ticket, UpdateTicketData } from "@/components/tickets/types"
 import { authFetch } from "./fetchUtils"
+import { API_BASE_URL } from "@/lib/config"
 
-const API_URL = 'https://api-smsgateway.solutech-one.com/api/V1/tickets'
+const API_URL = `${API_BASE_URL}/api/V1/tickets`
 
 export const fetchTickets = async (): Promise<Ticket[]> => {
     const response = await authFetch(API_URL)

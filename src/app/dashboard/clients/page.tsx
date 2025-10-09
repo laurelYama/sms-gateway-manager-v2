@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { getToken } from "@/lib/auth"
+import { API_BASE_URL } from "@/lib/config"
 import { toast } from "sonner"
 import { Client, CreateClientForm, EditClientForm, ReferentielItem } from "@/types/client"
 import { ClientFilters } from "@/components/clients/ClientFilters"
@@ -56,7 +57,7 @@ export default function ClientsPage() {
 
         try {
             // Construire l'URL avec les paramètres de pagination
-            const url = new URL('https://api-smsgateway.solutech-one.com/api/V1/clients')
+            const url = new URL(`${API_BASE_URL}/api/V1/clients`)
             url.searchParams.append('page', (page - 1).toString()) // L'API attend une pagination 0-based
             url.searchParams.append('size', size.toString())
 
@@ -128,7 +129,7 @@ export default function ClientsPage() {
 
         try {
             const response = await fetch(
-                `https://api-smsgateway.solutech-one.com/api/v1/referentiel/categorie/${category}`,
+                `${API_BASE_URL}/api/v1/referentiel/categorie/${category}`,
                 {
                     headers: {
                         Authorization: `Bearer ${currentToken}`,
@@ -375,8 +376,8 @@ export default function ClientsPage() {
 
         const newStatus = client.statutCompte === "ACTIF" ? "SUSPENDU" : "ACTIF"
         const endpoint = newStatus === "SUSPENDU" 
-            ? `https://api-smsgateway.solutech-one.com/api/V1/clients/${client.idclients}/suspend`
-            : `https://api-smsgateway.solutech-one.com/api/V1/clients/${client.idclients}/reactivate`
+            ? `${API_BASE_URL}/api/V1/clients/${client.idclients}/suspend`
+            : `${API_BASE_URL}/api/V1/clients/${client.idclients}/reactivate`
         
         try {
             console.log(`Tentative de changement de statut pour le client ${client.idclients} vers ${newStatus}`)
@@ -442,7 +443,7 @@ export default function ClientsPage() {
             
             console.log('Données à envoyer à l\'API:', dataToSend);
 
-            const url = `https://api-smsgateway.solutech-one.com/api/V1/clients/${currentClient.idclients}`
+            const url = `${API_BASE_URL}/api/V1/clients/${currentClient.idclients}`
             console.log('Envoi des données de mise à jour:', dataToSend)
             
             const response = await fetch(url, {
@@ -493,7 +494,7 @@ export default function ClientsPage() {
 
             console.log('Données envoyées à l\'API:', dataToSend);
 
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/clients", {
+            const response = await fetch(`${API_BASE_URL}/api/V1/clients`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,

@@ -10,8 +10,10 @@ import { fr } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Loader2, MessageSquare, Send, ChevronDown, ChevronUp, User, Calendar, Building, Filter, List } from 'lucide-react'
+import { Loader2, MessageSquare, Send, ChevronDown, ChevronUp, User, Calendar, Building, Filter, List, Eye } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useAuth } from '@/lib/auth'
+import { canUpdateTickets } from '@/lib/permissions'
 
 export function TicketList() {
     const [tickets, setTickets] = useState<Ticket[]>([])
@@ -24,6 +26,14 @@ export function TicketList() {
     const [currentPage, setCurrentPage] = useState(1)
     const [statusFilter, setStatusFilter] = useState<TicketStatus>('OUVERT')
     const itemsPerPage = 10
+    const { user } = useAuth()
+    const canPerformActions = canUpdateTickets(user)
+    const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+    
+    // Vérifie si l'utilisateur est l'auteur du ticket
+    const isTicketAuthor = (ticket: Ticket) => {
+        return user?.email === ticket.emailAuteur
+    }
 
     const loadTickets = async () => {
         try {
@@ -376,52 +386,30 @@ export function TicketList() {
                                                 </div>
 
                                                 <div className="flex flex-col gap-2 ml-4 shrink-0">
-                                                    <select
-                                                        value={ticket.statut}
-                                                        onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
-                                                        className="text-sm p-2 border rounded-md bg-white shadow-sm focus:ring-2 focus:ring-blue-500"
-                                                    >
-                                                        <option value="OUVERT" disabled>Ouvert</option>
-                                                        <option value="EN_COURS">En cours</option>
-                                                        <option value="FERME">Fermer</option>
-                                                    </select>
-
-                                                    <Button
-                                                        size="sm"
-                                                        variant={isExpanded ? "secondary" : "outline"}
-                                                        onClick={() => toggleTicketExpansion(ticket.id)}
-                                                        className="gap-2"
-                                                    >
-                                                        {isExpanded ? (
-                                                            <>
-                                                                <ChevronUp className="h-4 w-4" />
-                                                                Réduire
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <ChevronDown className="h-4 w-4" />
-                                                                Détails
-                                                            </>
-                                                        )}
-                                                    </Button>
+                                                    {isAdmin ? (
+                                                        <select
+                                                            value={ticket.statut}
+                                                            onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
+                                                            className="text-sm border rounded px-2 py-1 bg-white"
+                                                        >
+                                                            <option value="OUVERT">Ouvert</option>
+                                                            <option value="EN_COURS">En cours</option>
+                                                            <option value="FERME">Fermé</option>
+                                                        </select>
+                                                    ) : (
+                                                        <Badge className={`${getStatusBadgeVariant(ticket.statut)}`}>
+                                                            {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En cours' : ticket.statut}
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Contenu détaillé */}
                                         {isExpanded && (
-                                            <div className="p-4 space-y-4">
-                                                {/* Description */}
-                                                <div>
-                                                    <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                                                    <p className="text-gray-700 bg-gray-50 p-3 rounded-lg border">
-                                                        {ticket.description}
-                                                    </p>
-                                                </div>
-
+                                            <div className="p-4">
                                                 {/* Réponse existante */}
                                                 {hasResponse && (
-                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                                                         <div className="flex items-center gap-2 mb-2">
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                                             <h4 className="font-medium text-blue-900">Notre réponse</h4>
@@ -434,47 +422,29 @@ export function TicketList() {
                                                 )}
 
                                                 {/* Zone de réponse */}
-                                                {ticket.statut !== 'FERME' && (
+                                                {ticket.statut !== 'FERME' && canPerformActions && (
                                                     <div className="border-t pt-4">
-                                                        <div className="flex items-center gap-2 mb-3">
-                                                            <MessageSquare className="h-4 w-4 text-gray-600" />
-                                                            <h4 className="font-medium text-gray-900">Répondre au client</h4>
-                                                        </div>
-                                                        <Textarea
-                                                            placeholder="Écrivez votre réponse au client..."
-                                                            value={replyText}
-                                                            onChange={(e) => setReplyText(e.target.value)}
-                                                            className="min-h-[120px] resize-vertical"
-                                                        />
-                                                        <div className="flex justify-end gap-2 mt-3">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => {
-                                                                    setReplyingTo(null)
-                                                                    setReplyText('')
-                                                                }}
-                                                            >
-                                                                Annuler
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                onClick={() => handleSendReply(ticket.id)}
-                                                                disabled={isSubmitting || !replyText.trim()}
-                                                                className="gap-2"
-                                                            >
-                                                                {isSubmitting ? (
-                                                                    <>
-                                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                                        Envoi...
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <Send className="h-4 w-4" />
-                                                                        Envoyer et fermer le ticket
-                                                                    </>
-                                                                )}
-                                                            </Button>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Textarea
+                                                                value={replyText}
+                                                                onChange={(e) => setReplyText(e.target.value)}
+                                                                placeholder="Tapez votre réponse ici..."
+                                                                className="min-h-[100px]"
+                                                            />
+                                                            <div className="flex justify-end">
+                                                                <Button
+                                                                    onClick={() => handleReplySubmit()}
+                                                                    disabled={!replyText.trim() || isSubmitting}
+                                                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                                >
+                                                                    {isSubmitting ? (
+                                                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                                    ) : (
+                                                                        <Send className="h-4 w-4 mr-2" />
+                                                                    )}
+                                                                    Envoyer la réponse
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
@@ -482,33 +452,47 @@ export function TicketList() {
                                         )}
                                     </CardContent>
                                 </Card>
-                            )
-                        })}
-                    </div>
+                        )
+                    })}
+                </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 p-4 bg-gray-50 rounded-lg">
-                            <div className="text-sm text-gray-600">
-                                Page {currentPage} sur {totalPages} • {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
-                            </div>
-                            <div className="flex gap-2">
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-gray-600">
+                            Page {currentPage} sur {totalPages} • {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
+                        </div>
+                        <div className="flex gap-2">
+                            {canPerformActions ? (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Précédent
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Suivant
+                                    </Button>
+                                </>
+                            ) : (
                                 <Button
-                                    variant="outline"
                                     size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    Précédent
-                                </Button>
-                                <Button
                                     variant="outline"
-                                    size="sm"
                                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                     disabled={currentPage === totalPages}
+                                    className="text-gray-600 border-gray-200 hover:bg-gray-50"
                                 >
                                     Suivant
                                 </Button>
+                            )}
                             </div>
                         </div>
                     )}

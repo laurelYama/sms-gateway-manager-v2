@@ -5,6 +5,7 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { API_BASE_URL } from "@/lib/config"
 
 export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => void }) {
     const [email, setEmail] = useState("")
@@ -20,7 +21,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
         setSuccessMessage("")
 
         try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/manager/password/forgot", {
+            const response = await fetch(`${API_BASE_URL}/api/V1/manager/password/forgot`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

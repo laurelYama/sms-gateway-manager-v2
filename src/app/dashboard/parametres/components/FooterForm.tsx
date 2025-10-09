@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/lib/config';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +65,7 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
         throw new Error('Aucun token trouvé');
       }
 
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/v1/footer', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/footer`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

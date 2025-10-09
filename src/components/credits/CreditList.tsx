@@ -7,6 +7,8 @@ import { CreditRequest } from "@/types/credit"
 import { CreditStatusBadge } from "./CreditStatusBadge"
 import React, { useEffect, useState } from "react"
 import { getClientById, ClientInfo } from "@/lib/client-utils"
+import { useAuth } from "@/lib/auth"
+import { canApprove, canReject } from "@/lib/permissions"
 
 interface CreditListProps {
   credits: CreditRequest[]
@@ -37,6 +39,8 @@ export function CreditList({
 }: CreditListProps) {
   const [clients, setClients] = useState<Record<string, ClientInfo>>({})
   const [loadingClients, setLoadingClients] = useState<boolean>(false)
+  const { user } = useAuth()
+  const canPerformActions = user?.role !== 'AUDITEUR'
   
   // Charger les informations des clients manquants
   useEffect(() => {
@@ -103,8 +107,8 @@ export function CreditList({
         <Table>
           <TableHeader>
           <TableRow>
-            <TableHead>ID Client</TableHead>
-            <TableHead>Raison sociale</TableHead>
+            <TableHead>ID commande</TableHead>
+            <TableHead>Client</TableHead>
             <TableHead>Quantité</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead>Créé le</TableHead>
@@ -116,7 +120,7 @@ export function CreditList({
         <TableBody>
           {credits.map((credit) => (
             <TableRow key={credit.id}>
-              <TableCell className="font-mono text-sm">{credit.clientId}</TableCell>
+              <TableCell className="font-mono text-sm">{credit.requestCode}</TableCell>
               <TableCell>
                 {loadingClients && !clients[credit.clientId] 
                   ? 'Chargement...' 
@@ -144,42 +148,52 @@ export function CreditList({
                 {credit.checkerEmail || '-'}
               </TableCell>
               <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Ouvrir le menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      onClick={() => onApprove(credit.id)}
-                      disabled={credit.status !== 'PENDING'}
-                      className="cursor-pointer"
-                    >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Approuver
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => onReject(credit)}
-                      disabled={credit.status !== 'PENDING'}
-                      className="cursor-pointer"
-                    >
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Rejeter
-                    </DropdownMenuItem>
-                    {credit.status === 'REJECTED' && credit.rejectReason && (
-                      <DropdownMenuItem
-                        onClick={() => onViewReason(credit)}
-                        className="cursor-pointer"
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Voir le motif
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {canPerformActions ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Ouvrir le menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      {canApprove(user) && (
+                        <DropdownMenuItem
+                          onClick={() => onApprove(credit.id)}
+                          disabled={credit.status !== 'PENDING'}
+                          className="cursor-pointer"
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Approuver
+                        </DropdownMenuItem>
+                      )}
+                      {canReject(user) && (
+                        <DropdownMenuItem
+                          onClick={() => onReject(credit)}
+                          disabled={credit.status !== 'PENDING'}
+                          className="cursor-pointer"
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Rejeter
+                        </DropdownMenuItem>
+                      )}
+                      {credit.status === 'REJECTED' && credit.rejectReason && (
+                        <DropdownMenuItem
+                          onClick={() => onViewReason(credit)}
+                          className="cursor-pointer"
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Voir le motif
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button variant="ghost" className="h-8 w-8 p-0" disabled>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                )}
               </TableCell>
             </TableRow>
           ))}

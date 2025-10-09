@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { ForgotPasswordForm } from "./forgot-password-form"
+import { API_BASE_URL } from "@/lib/config"
 
 export function LoginForm() {
     const [email, setEmail] = useState("")
@@ -26,61 +27,85 @@ export function LoginForm() {
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setErrorMessage("")
-        setSuccessMessage("")
+        e.preventDefault();
+        setLoading(true);
+        setErrorMessage("");
+        setSuccessMessage("");
 
         try {
-            const response = await fetch("https://api-smsgateway.solutech-one.com/api/V1/auth/login", {
+            const response = await fetch(`${API_BASE_URL}/api/V1/auth/login`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Accept": "application/json"
                 },
                 body: JSON.stringify({
-                    email: email,
+                    email: email.trim(),
                     motDePasse: motDePasse
                 })
-            })
+            });
 
-            const data = await response.json()
+            // Lire le contenu de la réponse une seule fois
+            const responseText = await response.text();
+            let data;
+            
+            try {
+                // Essayer de parser le texte en JSON
+                data = responseText ? JSON.parse(responseText) : {};
+            } catch (error) {
+                // Si le parsing JSON échoue, utiliser le texte brut comme message d'erreur
+                console.error("Erreur lors du parsing de la réponse:", error);
+                throw new Error(responseText || "Identifiants incorrects");
+            }
 
-            if (response.ok) {
+            // Vérifier si la connexion a réussi
+            if (response.ok && data.token) {
                 // Connexion réussie
-                setSuccessMessage("Connexion réussie!")
+                setSuccessMessage("Connexion réussie!");
 
-                // Stocker le token et les données utilisateur
-                if (data.token) {
-                    // Utiliser la fonction setToken pour gérer correctement le stockage
-                    import("@/lib/auth").then(({ setToken }) => {
-                        setToken(data.token);
-                        
-                        // Si le backend renvoie les données utilisateur directement, les stocker aussi
-                        if (data.user) {
-                            localStorage.setItem("userData", JSON.stringify(data.user));
-                        }
-                        
-                        console.log('Token défini, données utilisateur:', data.user);
-                    }).catch(error => {
-                        console.error('Erreur lors de l\'import de setToken:', error);
-                    });
+                try {
+                    const { setToken } = await import("@/lib/auth");
+                    setToken(data.token);
+                    
+                    // Si le backend renvoie les données utilisateur directement, les stocker aussi
+                    if (data.user) {
+                        localStorage.setItem("userData", JSON.stringify(data.user));
+                    }
+                    
+                    console.log('Token défini, données utilisateur:', data.user);
+                    
+                    // Rediriger vers le tableau de bord après un court délai
+                    setTimeout(() => {
+                        router.push("/dashboard");
+                    }, 1500);
+                    
+                } catch (error) {
+                    console.error('Erreur lors de la gestion de la connexion:', error);
+                    setErrorMessage("Erreur lors de la connexion. Veuillez réessayer.");
                 }
-
-                // Attendre un peu pour montrer le message de succès
-                setTimeout(() => {
-                    // Rediriger vers la page dashboard
-                    router.push("/dashboard/home")
-                }, 1500)
-
             } else {
-                // Erreur de connexion
-                setErrorMessage(data.message || "Email ou mot de passe incorrect")
+                // Échec de la connexion - afficher le message d'erreur du serveur ou un message par défaut
+                const errorMessage = data.message || "Échec de la connexion";
+                setErrorMessage(errorMessage);
+                
+                // Effacer le mot de passe pour des raisons de sécurité
+                setMotDePasse("");
+                
+                // Mettre le focus sur le champ email
+                const emailInput = document.getElementById("email");
+                if (emailInput) {
+                    emailInput.focus();
+                }
             }
         } catch (error) {
-            console.error("Erreur de connexion:", error)
-            setErrorMessage("Erreur de connexion au serveur. Veuillez réessayer.")
+            console.error("Erreur de connexion:", error);
+            if (error instanceof Error) {
+                setErrorMessage(error.message || "Erreur de connexion au serveur. Veuillez réessayer.");
+            } else {
+                setErrorMessage("Erreur inattendue. Veuillez réessayer plus tard.");
+            }
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 

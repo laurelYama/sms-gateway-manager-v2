@@ -6,6 +6,7 @@ import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Eye, EyeOff } from "lucide-react"
 import Image from "next/image"
+import { API_BASE_URL } from "@/lib/config"
 
 export function ResetPasswordForm() {
     const [password, setPassword] = useState("")
@@ -55,7 +56,7 @@ export function ResetPasswordForm() {
         setErrorMessage("")
 
         try {
-            const url = new URL(`https://api-smsgateway.solutech-one.com/api/V1/manager/password/reset`)
+            const url = new URL(`${API_BASE_URL}/api/V1/manager/password/reset`)
             url.searchParams.append('token', token)
             
             const response = await fetch(url.toString(), {

@@ -6,7 +6,7 @@ export interface Manager {
     prenomManager: string;
     email: string;
     numeroTelephoneManager: string;
-    role: 'ADMIN' | 'SUPER_ADMIN';
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR';
     etat: UserStatus;
 }
 
@@ -16,7 +16,7 @@ export interface CreateManagerDto {
     email: string;
     numeroTelephoneManager: string;
     motDePasseManager: string;
-    role: 'ADMIN' | 'SUPER_ADMIN';
+    role: 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR';
 }
 
 export interface UsersTableProps {
@@ -31,6 +31,6 @@ export interface UserFormData {
     prenomManager: string;
     email: string;
     numeroTelephoneManager: string;
-    role: 'ADMIN' | 'MANAGER' | 'USER';
+    role: 'ADMIN' | 'MANAGER' | 'USER' | 'AUDITEUR';
     password?: string;
 }

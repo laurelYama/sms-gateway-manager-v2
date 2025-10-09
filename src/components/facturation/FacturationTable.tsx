@@ -1,7 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Download, Send, Eye, MoreHorizontal } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 // Formatage de date personnalisé pour le français
 const formatDate = (date: Date | string) => {
@@ -20,23 +19,10 @@ interface FacturationTableProps {
     onDownload: (id: string) => void
     onSend: (id: string) => void
     loading?: boolean
+    sending?: Record<string, boolean>
 }
 
 export function FacturationTable({ factures, onPreview, onDownload, onSend, loading = false, sending = {} }: FacturationTableProps) {
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'GENEREE':
-                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Générée</Badge>
-            case 'ENVOYEE':
-                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Envoyée</Badge>
-            case 'PAYEE':
-                return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Payée</Badge>
-            case 'ANNULEE':
-                return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200">Annulée</Badge>
-            default:
-                return <Badge variant="outline">Brouillon</Badge>
-        }
-    }
 
     if (loading && factures.length === 0) {
         return (
@@ -61,24 +47,28 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>ID facture</TableHead>
                         <TableHead>Client</TableHead>
                         <TableHead>Période</TableHead>
                         <TableHead>Consommation</TableHead>
+                        <TableHead>Prix unitaire</TableHead>
                         <TableHead>Montant</TableHead>
-                        <TableHead>Statut</TableHead>
                         <TableHead className="w-40">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {factures.map((facture) => (
                         <TableRow key={facture.id}>
+                            <TableCell className="font-mono text-xs" title={facture.id}>
+                                {facture.id.substring(0, 8)}
+                            </TableCell>
                             <TableCell className="font-medium">{facture.clientNom}</TableCell>
                             <TableCell>
                                 {formatDate(facture.dateDebut)} - {formatDate(facture.dateFin)}
                             </TableCell>
                             <TableCell>{facture.consommationSms} SMS</TableCell>
+                            <TableCell>{facture.prixUnitaire.toLocaleString('fr-FR')} F CFA</TableCell>
                             <TableCell>{facture.montant.toLocaleString('fr-FR')} F CFA</TableCell>
-                            <TableCell>{getStatusBadge(facture.statut)}</TableCell>
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

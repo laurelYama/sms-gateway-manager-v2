@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2, Search } from "lucide-react"
+import { Loader2, Search, Check as CheckIcon } from "lucide-react"
 import { useEffect, useState } from 'react'
 import { IndicatifPays, useIndicatifs } from '../services/indicatifs'
+import * as SelectPrimitive from '@radix-ui/react-select'
 
 // Les indicatifs seront chargés depuis l'API
 
@@ -35,7 +36,7 @@ const formSchema = z.object({
   numeroTelephoneManager: z.string()
     .min(8, 'Numéro de téléphone invalide')
     .regex(/^[0-9]+$/, 'Le numéro ne doit contenir que des chiffres'),
-  role: z.enum(['ADMIN', 'SUPER_ADMIN']),
+  role: z.enum(['ADMIN', 'SUPER_ADMIN', 'AUDITEUR']),
   password: z.string().optional(),
 })
 
@@ -83,31 +84,36 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
     loadIndicatifs()
   }, [getIndicatifs])
 
-  // Créer une copie des indicatifs avec des identifiants uniques
+  // Créer une liste d'indicatifs uniques avec des clés stables
   const filteredIndicatifs = useMemo(() => {
-    const filtered = searchTerm 
-      ? indicatifs.filter(ind => 
-          ind.value1.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          ind.value2.includes(searchTerm)
-        )
-      : [...indicatifs];
+    if (!Array.isArray(indicatifs)) return [];
     
-    // Créer un Map pour suivre les doublons
-    const valueCount = new Map();
+    const seen = new Set();
     
-    return filtered.map((ind, index) => {
-      const baseKey = `${ind.refID}-${ind.keyValue}-${ind.value2}`;
-      const count = (valueCount.get(ind.value2) || 0) + 1;
-      valueCount.set(ind.value2, count);
-      
-      return {
+    return indicatifs
+      .filter(ind => {
+        if (!ind || !ind.value2) return false;
+        
+        const key = ind.value2;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          const matchesSearch = 
+            (ind.value1?.toLowerCase() || '').includes(searchLower) ||
+            (ind.value2.toString() || '').includes(searchTerm);
+          
+          if (!matchesSearch) return false;
+        }
+        
+        return true;
+      })
+      .map((ind, index) => ({
         ...ind,
-        // Créer un identifiant unique qui inclut le compteur pour les doublons
-        uniqueId: `${baseKey}-${count}-${index}`,
-        // Ajouter un suffixe au texte pour les doublons
-        displayText: count > 1 ? `${ind.value1} (${count})` : ind.value1
-      };
-    });
+        id: `indicatif-${index}-${ind.value2.replace(/\+/g, '')}`,
+        displayText: ind.value1 || `Indicatif ${ind.value2}`
+      }));
   }, [indicatifs, searchTerm]);
 
   const form = useForm<UserFormValues>({
@@ -118,7 +124,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
       email: '',
       numeroTelephoneManager: '',
       indicatif: '+241', // Valeur par défaut pour le Gabon
-      role: 'ADMIN',
+      role: 'AUDITEUR',
       password: ''
     },
   })
@@ -182,7 +188,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
                         <SelectValue placeholder="Sélectionner un indicatif" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="p-0">
+                    <SelectContent>
                       <div className="p-2 border-b">
                         <div className="relative">
                           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -199,7 +205,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
                       <div className="max-h-[300px] overflow-y-auto">
                         {filteredIndicatifs.map((ind) => (
                           <SelectItem 
-                            key={ind.uniqueId}
+                            key={ind.id}
                             value={ind.value2}
                             className="[&>span:first-child]:hidden"
                           >
@@ -207,7 +213,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
                               <span className="font-mono text-sm mr-2 text-muted-foreground w-16">
                                 {ind.value2}
                               </span>
-                              <span>{ind.displayText || ind.value1}</span>
+                              <span>{ind.displayText}</span>
                             </div>
                           </SelectItem>
                         ))}
@@ -257,8 +263,9 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="SUPER_ADMIN">Super Administrateur</SelectItem>
-                  <SelectItem value="ADMIN">Administrateur</SelectItem>
+                  <SelectItem key="super-admin" value="SUPER_ADMIN">Super Administrateur</SelectItem>
+                  <SelectItem key="admin" value="ADMIN">Administrateur</SelectItem>
+                  <SelectItem key="auditeur" value="AUDITEUR">Auditeur</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

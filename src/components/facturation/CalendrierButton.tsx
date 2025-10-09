@@ -63,30 +63,11 @@ export function CalendrierButton({
           {loading ? 'Chargement...' : 'Afficher le calendrier'}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader className="flex-row items-center justify-between">
+      <DialogContent className="max-w-3xl sm:max-w-4xl p-0">
+        <DialogHeader className="flex-row items-center justify-between px-6 pt-6">
           <DialogTitle>Calendrier de facturation</DialogTitle>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">Année :</span>
-            <Select 
-              value={selectedYear.toString()} 
-              onValueChange={handleYearSelect}
-              disabled={localLoading}
-            >
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Sélectionner" />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map(year => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </DialogHeader>
-        <div className="py-4">
+        <div className="px-6 pb-6 pt-2 max-h-[80vh] overflow-y-auto">
           {localLoading || loading ? (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
               <Skeleton className="h-8 w-8 rounded-full" />

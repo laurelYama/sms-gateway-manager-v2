@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { API_BASE_URL } from "@/lib/config"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -12,9 +13,10 @@ import { CreditFilters } from "@/components/credits/CreditFilters"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RejectCreditDialog } from "@/components/credits/RejectCreditDialog"
 
 interface CreditRequest {
-    id: string
+    requestCode: number
     clientId: string
     quantity: number
     status: "PENDING" | "APPROVED" | "REJECTED"
@@ -48,9 +50,15 @@ export default function CreditsPage() {
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
     const [selectedCredit, setSelectedCredit] = useState<CreditRequest | null>(null)
     const [rejectReason, setRejectReason] = useState("")
+    const [rejectLoading, setRejectLoading] = useState(false)
     const [viewReasonDialogOpen, setViewReasonDialogOpen] = useState(false)
     const [selectedRejectedCredit, setSelectedRejectedCredit] = useState<CreditRequest | null>(null)
     const [pageSize, setPageSize] = useState(5)
+
+    // Compteurs globaux indépendants de la pagination
+    const [pendingCount, setPendingCount] = useState<number>(0)
+    const [approvedCount, setApprovedCount] = useState<number>(0)
+    const [rejectedCount, setRejectedCount] = useState<number>(0)
 
     const token = getToken()
 
@@ -62,7 +70,7 @@ export default function CreditsPage() {
         
         setLoading(true)
         try {
-            const url = new URL("https://api-smsgateway.solutech-one.com/api/V1/credits")
+            const url = new URL(`${API_BASE_URL}/api/V1/credits`)
             url.searchParams.append("page", page.toString())
             url.searchParams.append("size", size.toString())
             if (status !== "ALL") {
@@ -90,12 +98,42 @@ export default function CreditsPage() {
         }
     }, [token, statusFilter, pageSize])
 
+    // Charger les compteurs globaux par statut (indépendants de la pagination)
+    const loadCounts = useCallback(async () => {
+        if (!token) return
+        try {
+            const statuses = ["PENDING", "APPROVED", "REJECTED"] as const
+            const urls = statuses.map(s => {
+                const u = new URL(`${API_BASE_URL}/api/V1/credits`)
+                u.searchParams.append("page", "0")
+                u.searchParams.append("size", "1") // inutile d'apporter plus, on lit totalElements
+                u.searchParams.append("status", s)
+                return u.toString()
+            })
+            const responses = await Promise.all(urls.map(u => fetch(u, {
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json",
+                },
+            })))
+            const jsons = await Promise.all(responses.map(r => r.json()))
+            // Attendu: { totalElements, ... }
+            setPendingCount(jsons[0]?.totalElements ?? 0)
+            setApprovedCount(jsons[1]?.totalElements ?? 0)
+            setRejectedCount(jsons[2]?.totalElements ?? 0)
+        } catch (err) {
+            console.error("Erreur lors du chargement des compteurs:", err)
+        }
+    }, [token])
+
     // Chargement initial des données
     useEffect(() => {
         if (token) {
             loadCredits(currentPage, statusFilter, pageSize)
+            // Charger/rafraîchir aussi les compteurs globaux
+            loadCounts()
         }
-    }, [token, currentPage, pageSize, statusFilter])
+    }, [token, currentPage, pageSize, statusFilter, loadCounts])
 
     const handleRefresh = useCallback(() => {
         return loadCredits(currentPage, statusFilter, pageSize)
@@ -105,7 +143,7 @@ export default function CreditsPage() {
         if (!token) return
 
         try {
-            const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/credits/${id}/approve`, {
+            const response = await fetch(`${API_BASE_URL}/api/V1/credits/${id}/approve`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -133,7 +171,7 @@ export default function CreditsPage() {
         setViewReasonDialogOpen(true)
     }
 
-    const handleReject = async () => {
+    const handleReject = async (reasonParam: string) => {
         if (!selectedCredit || !token) {
             console.error("Aucun crédit sélectionné ou token manquant")
             return
@@ -141,16 +179,17 @@ export default function CreditsPage() {
 
         try {
             console.log("Tentative de rejet du crédit:", selectedCredit.id)
-            console.log("Raison du rejet:", rejectReason)
+            console.log("Raison du rejet:", reasonParam)
             
-            const url = `https://api-smsgateway.solutech-one.com/api/V1/credits/${selectedCredit.id}/reject`
+            const url = `${API_BASE_URL}/api/V1/credits/${selectedCredit.id}/reject`
             console.log("URL de la requête:", url)
             
             const requestBody = {
-                reason: rejectReason.trim()
+                reason: reasonParam.trim()
             }
             console.log("Corps de la requête:", requestBody)
             
+            setRejectLoading(true)
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -180,6 +219,8 @@ export default function CreditsPage() {
         } catch (error) {
             console.error("Erreur lors du rejet:", error)
             toast.error(`Échec du rejet: ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
+        } finally {
+            setRejectLoading(false)
         }
     }
 
@@ -292,9 +333,7 @@ export default function CreditsPage() {
                         <CardTitle className="text-sm font-medium">En attente</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-amber-600">
-                            {credits.filter(c => c.status === "PENDING").length}
-                        </div>
+                        <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
                         <p className="text-gray-500 text-sm">En attente de validation</p>
                     </CardContent>
                 </Card>
@@ -304,16 +343,8 @@ export default function CreditsPage() {
                         <CardTitle className="text-sm font-medium">Approuvés</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
-                            {credits.filter(c => {
-                                if (c.status !== "APPROVED") return false;
-                                const creditDate = new Date(c.validatedAt || c.createdAt);
-                                const now = new Date();
-                                return creditDate.getMonth() === now.getMonth() && 
-                                       creditDate.getFullYear() === now.getFullYear();
-                            }).length}
-                        </div>
-                        <p className="text-gray-500 text-sm">Approuvés ce mois-ci</p>
+                        <div className="text-2xl font-bold text-green-600">{approvedCount}</div>
+                        <p className="text-gray-500 text-sm">Approuvés (tous)</p>
                     </CardContent>
                 </Card>
 
@@ -322,16 +353,8 @@ export default function CreditsPage() {
                         <CardTitle className="text-sm font-medium">Rejetés</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">
-                            {credits.filter(c => {
-                                if (c.status !== "REJECTED") return false;
-                                const creditDate = new Date(c.validatedAt || c.createdAt);
-                                const now = new Date();
-                                return creditDate.getMonth() === now.getMonth() && 
-                                       creditDate.getFullYear() === now.getFullYear();
-                            }).length}
-                        </div>
-                        <p className="text-gray-500 text-sm">Rejetés ce mois-ci</p>
+                        <div className="text-2xl font-bold text-red-600">{rejectedCount}</div>
+                        <p className="text-gray-500 text-sm">Rejetés (tous)</p>
                     </CardContent>
                 </Card>
             </div>
@@ -352,43 +375,14 @@ export default function CreditsPage() {
                 />
             </div>
 
-            {/* Dialog de rejet */}
-            <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Rejeter la demande</DialogTitle>
-                        <DialogDescription>
-                            Motif du rejet pour {selectedCredit?.quantity.toLocaleString()} crédits
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="rejectReason">Motif *</Label>
-                            <Input
-                                id="rejectReason"
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                placeholder="Saisissez le motif du rejet"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
-                            Annuler
-                        </Button>
-                        <Button onClick={handleReject} disabled={!rejectReason.trim() || loading}>
-                            {loading ? (
-                                <>
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Traitement...
-                                </>
-                            ) : (
-                                'Confirmer le rejet'
-                            )}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Dialog de rejet - avec sélection de motifs */}
+            <RejectCreditDialog
+                open={rejectDialogOpen}
+                onOpenChange={setRejectDialogOpen}
+                credit={selectedCredit}
+                loading={rejectLoading}
+                onReject={(reason) => handleReject(reason)}
+            />
 
             {/* Dialog de visualisation du motif de rejet */}
             <Dialog open={viewReasonDialogOpen} onOpenChange={setViewReasonDialogOpen}>

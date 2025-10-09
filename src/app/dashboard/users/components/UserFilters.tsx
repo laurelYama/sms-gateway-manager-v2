@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-type Role = 'ADMIN' | 'SUPER_ADMIN' | ''
+type Role = 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR' | ''
 
 interface UserFiltersProps {
   searchQuery: string
@@ -44,6 +44,7 @@ export function UserFilters({
               <SelectItem value="all">Tous les rôles</SelectItem>
               <SelectItem value="ADMIN">Administrateur</SelectItem>
               <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+              <SelectItem value="AUDITEUR">Auditeur</SelectItem>
             </SelectContent>
           </Select>
         </div>
