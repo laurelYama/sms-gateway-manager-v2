@@ -68,11 +68,7 @@ export function ClientStats({ clients }: ClientStatsProps) {
                 const postpayeClients = clients.filter(client => client.typeCompte === 'POSTPAYE');
                 const totalPostpaye = postpayeClients.reduce((sum, client) => sum + (client.soldeNet || 0), 0);
                 const average = postpayeClients.length > 0 ? totalPostpaye / postpayeClients.length : 0;
-                return (
-                  <>
-                    {formatNumber(average)} <span className="text-sm">FCFA</span>
-                  </>
-                );
+                return formatNumber(average);
               })()}
             </div>
             <p className="text-gray-500 text-xs">

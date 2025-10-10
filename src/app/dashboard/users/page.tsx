@@ -582,8 +582,15 @@ export default function UsersPage() {
           });
 
           if (!response.ok) {
-            const error = await response.json().catch(() => ({}))
-            throw new Error(error.message || 'Erreur lors de l\'archivage')
+            const error = await response.json().catch(() => ({}));
+            // Vérifier si l'erreur indique que le manager est déjà archivé
+            if (error.message && error.message.includes('déjà archivé')) {
+              toast.info('Ce manager est déjà archivé');
+              // Recharger les données pour s'assurer qu'elles sont à jour
+              await fetchManagers();
+              return;
+            }
+            throw new Error(error.message || 'Erreur lors de l\'archivage');
           }
 
           toast.success('Utilisateur archivé avec succès')

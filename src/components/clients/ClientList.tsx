@@ -72,7 +72,7 @@ export function ClientList({
         client.typeCompte === 'POSTPAYE' ? 'Postpayé' : 'Prépayé',
         client.statutCompte,
         client.coutSmsTtc || 0,
-        client.coutSmsTtc ? (client.coutSmsTtc * (client.soldeNet || 0)) / 100 : 0
+        client.coutSmsTtc ? (client.coutSmsTtc * (client.soldeNet || 0)) : 0
       ]);
     });
 
@@ -185,7 +185,7 @@ export function ClientList({
               </TableCell>
               <TableCell className="font-medium">
                 {client.coutSmsTtc ? (
-                  formatCurrency((client.coutSmsTtc * (client.soldeNet || 0)) / 100)
+                  formatCurrency(client.coutSmsTtc * (client.soldeNet || 0)) + ' FCFA'
                 ) : (
                   <span className="text-muted-foreground">-</span>
                 )}

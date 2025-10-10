@@ -13,6 +13,7 @@ import { FacturationTable } from "@/components/facturation/FacturationTable"
 import { CalendrierButton } from "@/components/facturation/CalendrierButton"
 import { GenerationFactureDialog } from "@/components/facturation/GenerationFactureDialog"
 import { ExerciceConfigDialog } from "@/components/facturation/ExerciceConfigDialog"
+import { GenerateUserInvoiceDialog } from "@/components/facturation/GenerateUserInvoiceDialog"
 import { Facture, Exercice, Calendrier, GenerationParams } from "@/components/facturation/types"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -63,6 +64,7 @@ export default function FacturationPage() {
     const [generating, setGenerating] = useState<boolean>(false)
     const [generationDialogOpen, setGenerationDialogOpen] = useState<boolean>(false)
     const [showExerciceConfig, setShowExerciceConfig] = useState(false)
+    const [showUserInvoiceDialog, setShowUserInvoiceDialog] = useState(false)
     const [footerConfig, setFooterConfig] = useState<FooterConfig>({
         companyName: "",
         companyAddress: "",
@@ -538,13 +540,22 @@ export default function FacturationPage() {
                         <h1 className="text-3xl font-bold tracking-tight text-gray-900">Gestion de la Facturation</h1>
                         <p className="text-muted-foreground">Compte postpayé</p>
                     </div>
-                    <CalendrierButton 
-                        calendrier={calendrier || []}
-                        selectedYear={selectedYear}
-                        onYearChange={handleYearChange}
-                        loading={loading}
-                        availableYears={availableYears}
-                    />
+                    <div className="flex gap-2">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setShowUserInvoiceDialog(true)}
+                            className="whitespace-nowrap"
+                        >
+                            Générer une facture
+                        </Button>
+                        <CalendrierButton 
+                            calendrier={calendrier || []}
+                            selectedYear={selectedYear}
+                            onYearChange={handleYearChange}
+                            loading={loading}
+                            availableYears={availableYears}
+                        />
+                    </div>
                 </div>
                 
                 <div className="space-y-4">
@@ -689,6 +700,16 @@ export default function FacturationPage() {
                     defaultValues={{
                         annee: selectedYear,
                         mois: new Date().getMonth() + 1
+                    }}
+                />
+
+                <GenerateUserInvoiceDialog
+                    open={showUserInvoiceDialog}
+                    onOpenChange={setShowUserInvoiceDialog}
+                    token={token}
+                    onSuccess={() => {
+                        loadFactures()
+                        loadCalendrier(selectedYear)
                     }}
                 />
 
