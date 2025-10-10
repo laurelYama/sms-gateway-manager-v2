@@ -46,7 +46,6 @@ export function Navbar() {
             if (token) {
                 const decoded = decodeToken(token);
                 if (decoded) {
-                    console.log('Données utilisateur mises à jour depuis le token:', decoded);
                     setUserData(decoded);
                 }
             }
@@ -60,25 +59,16 @@ export function Navbar() {
         };
     }, [])
     
-    // Log des données utilisateur lorsqu'elles changent
+    // Mise à jour des données utilisateur
     useEffect(() => {
-        console.log('Données utilisateur mises à jour:', userData);
-        if (userData) {
-            console.log('Rôle utilisateur:', userData.role);
-            console.log('Toutes les propriétés:', Object.keys(userData));
-        }
+        // Logs de débogage désactivés
     }, [userData])
 
     const checkAuthStatus = () => {
-        console.group('Vérification du statut d\'authentification');
-        
         const token = getToken();
-        console.log('Token récupéré:', token ? 'présent' : 'absent');
         
         if (!token || !isValidToken(token)) {
-            console.log('Token invalide ou expiré, déconnexion...');
             handleLogout();
-            console.groupEnd();
             return;
         }
 
@@ -86,24 +76,20 @@ export function Navbar() {
         try {
             const decodedUser = decodeToken(token);
             if (decodedUser) {
-                console.log('Utilisateur décodé depuis le token:', decodedUser);
                 setUserData(decodedUser);
                 // Mettre à jour le stockage local pour la cohérence
                 localStorage.setItem(USER_DATA_KEY, JSON.stringify(decodedUser));
-                console.groupEnd();
                 return;
             }
         } catch (error) {
-            console.error('Erreur lors du décodage du token:', error);
+            console.error('Erreur d\'authentification');
         }
 
         // Si le décodage échoue, essayer de récupérer depuis le stockage local
         const storedUserData = getUserData();
         if (storedUserData) {
-            console.log('Utilisation des données utilisateur stockées:', storedUserData);
             setUserData(storedUserData);
         } else {
-            console.log('Aucune donnée utilisateur trouvée');
             handleLogout();
         }
         
@@ -127,8 +113,6 @@ export function Navbar() {
     }
 
     const getRoleDisplay = (role: any) => {
-        console.log('Rôle reçu (type):', typeof role, 'valeur:', role);
-        
         if (!role) return 'Utilisateur';
         
         // Si le rôle est un objet, essayer d'extraire la propriété 'role' ou 'authority'
@@ -201,10 +185,7 @@ export function Navbar() {
                                     {userData?.nom || "Utilisateur"}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                    {(() => {
-                                        console.log('userData.role avant getRoleDisplay:', userData?.role);
-                                        return userData?.role ? getRoleDisplay(userData.role) : "Utilisateur";
-                                    })()}
+                                    {userData?.role ? getRoleDisplay(userData.role) : "Utilisateur"}
                                 </span>
                             </div>
                         </div>

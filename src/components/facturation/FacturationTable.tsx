@@ -67,8 +67,8 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
                                 {formatDate(facture.dateDebut)} - {formatDate(facture.dateFin)}
                             </TableCell>
                             <TableCell>{facture.consommationSms} SMS</TableCell>
-                            <TableCell>{facture.prixUnitaire.toLocaleString('fr-FR')} F CFA</TableCell>
-                            <TableCell>{facture.montant.toLocaleString('fr-FR')} F CFA</TableCell>
+                            <TableCell>{facture.prixUnitaire.toLocaleString('fr-FR')} FCFA</TableCell>
+                            <TableCell>{facture.montant.toLocaleString('fr-FR')} FCFA</TableCell>
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

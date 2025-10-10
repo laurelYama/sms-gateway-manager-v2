@@ -121,12 +121,18 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
         })
         throw new Error(errorMessage)
       }
-      
-      return responseData
 
-      toast.success('Facture générée avec succès')
-      onOpenChange(false)
-      onSuccess?.()
+      // Vérifier si une facture existe déjà pour ce mois
+      if (responseData.skippedDuplicate === 1) {
+        const selectedMonth = months.find(m => m.value === month)?.label || 'le mois sélectionné';
+        toast.warning(`Une facture existe déjà pour ${selectedMonth} ${year}. Vous ne pouvez pas en générer une autre.`);
+      } else if (responseData.generated === 1) {
+        toast.success('Facture générée avec succès');
+        onOpenChange(false);
+        onSuccess?.();
+      } else {
+        toast.info('Aucune facture générée. Vérifiez les données du client pour ce mois.');
+      }
     } catch (error) {
       console.error('Erreur:', error)
       toast.error(error instanceof Error ? error.message : 'Erreur lors de la génération de la facture')

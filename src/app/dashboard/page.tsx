@@ -13,14 +13,25 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import { getToken } from '@/lib/auth'
 import { useAuth } from '@/lib/auth'
 import { fetchTickets } from '@/lib/api/tickets'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid, Area, AreaChart
+import { 
+  XAxis, 
+  YAxis, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer, 
+  CartesianGrid, 
+  Legend, 
+  PieChart, 
+  BarChart, 
+  AreaChart,
+  Area as RechartsArea,
+  Bar
 } from 'recharts'
+// Utilisation directe de Bar de recharts au lieu du composant personnalisé
+import { Pie as RechartsPie, Cell } from 'recharts'
 import {
   MessageSquare, Ticket, Users, CreditCard,
   AlertCircle, CheckCircle, Clock, RefreshCw, RotateCw, Mail,
@@ -32,6 +43,14 @@ import { TicketStatus } from '@/components/tickets/types'
 import { MetricsCard } from '@/components/dashboard/metrics-card'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']
+  
+// Couleurs pour les statuts des tickets
+const statusColors = {
+  OUVERT: '#F59E0B', // orange
+  EN_COURS: '#3B82F6', // bleu
+  FERME: '#10B981', // vert
+  REJETE: '#EF4444' // rouge
+}
 
 // Données factices pour les exemples
 const mockSmsData = [
@@ -125,14 +144,8 @@ export default function DashboardPage() {
     let currentMonthCount = 0;
     let lastMonthCount = 0;
 
-    console.log(`Calcul des statistiques SMS - Mois en cours: ${currentMonth+1}/${currentYear}, Mois dernier: ${lastMonth+1}/${lastMonthYear}`);
-
     smsList.forEach(sms => {
       // On ne compte que les SMS avec statut 'ENVOYE' et une date de mise à jour valide
-      if (sms.statut !== 'ENVOYE' || !sms.updatedAt) {
-        return;
-      }
-
       try {
         const smsDate = new Date(sms.updatedAt);
         const smsMonth = smsDate.getMonth();
@@ -141,18 +154,15 @@ export default function DashboardPage() {
         // Vérification des dates pour le décompte
         if (smsYear === currentYear && smsMonth === currentMonth) {
           currentMonthCount++;
-          console.log(`SMS du mois en cours: ${sms.ref} - ${sms.updatedAt}`);
         } else if ((smsYear === lastMonthYear && smsMonth === lastMonth) ||
             (currentMonth === 0 && smsMonth === 11 && smsYear === currentYear - 1)) {
           lastMonthCount++;
-          console.log(`SMS du mois dernier: ${sms.ref} - ${sms.updatedAt}`);
         }
       } catch (error) {
         console.error('Erreur lors du traitement de la date du SMS:', sms.updatedAt, error);
       }
     });
 
-    console.log(`Résultats - Ce mois: ${currentMonthCount}, Mois dernier: ${lastMonthCount}`);
 
     // Calcul de la tendance
     let trend = 0;
@@ -351,7 +361,6 @@ export default function DashboardPage() {
             sms.statut === 'ENVOYE';
       }).length;
 
-      console.log(`SMS comptabilisés - Actuel: ${currentCount}, Précédent: ${previousCount}`);
 
       // Mettre à jour le compteur de SMS du mois en cours
       setSentSmsCount(currentCount);
@@ -360,7 +369,6 @@ export default function DashboardPage() {
       const trend = calculateSmsTrend(currentCount, previousCount);
       setSmsTrend(trend);
 
-      console.log(`Statistiques SMS - Mois actuel: ${currentCount}, Mois précédent: ${previousCount}, Tendance: ${trend.value} ${trend.isPositive ? '↑' : '↓'}`);
 
       // Mettre à jour les statistiques SMS
       setSmsStats({
@@ -390,7 +398,6 @@ export default function DashboardPage() {
         return
       }
 
-      console.log('Récupération des tickets ouverts...')
       const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -400,7 +407,6 @@ export default function DashboardPage() {
         credentials: 'include'
       })
 
-      console.log('Réponse tickets reçue:', response.status)
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -409,7 +415,6 @@ export default function DashboardPage() {
       }
 
       const ticketsData = await response.json()
-      console.log('Tickets récupérés:', ticketsData)
 
       // Filtrer les tickets ouverts
       if (Array.isArray(ticketsData)) {
@@ -430,12 +435,10 @@ export default function DashboardPage() {
   // Fonction pour charger les tickets
   const fetchTickets = useCallback(async () => {
     if (!token) {
-      console.log('fetchTickets: Aucun token disponible');
       return [];
     }
 
     try {
-      console.log('fetchTickets: Récupération des tickets...');
       const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -451,7 +454,6 @@ export default function DashboardPage() {
       }
 
       const tickets = await response.json();
-      console.log(`fetchTickets: ${tickets.length} tickets chargés`);
       return tickets;
     } catch (error) {
       console.error('Erreur lors du chargement des tickets:', error);
@@ -468,7 +470,6 @@ export default function DashboardPage() {
         return 0;
       }
 
-      console.log('Récupération des SMS en attente...');
       const response = await fetch(
           'https://api-smsgateway.solutech-one.com/api/V1/sms/pending',
           {
@@ -482,7 +483,6 @@ export default function DashboardPage() {
           }
       );
 
-      console.log('Réponse SMS en attente reçue:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -491,7 +491,6 @@ export default function DashboardPage() {
       }
 
       const data = await response.json();
-      console.log('Données SMS en attente reçues:', data);
 
       // Compter le nombre de SMS en attente
       const pendingCount = Array.isArray(data) ? data.length : 0;
@@ -560,13 +559,11 @@ export default function DashboardPage() {
   // Fonction pour charger les SMS récents
   const fetchRecentSms = useCallback(async () => {
     if (!token) {
-      console.log('fetchRecentSms: Aucun token disponible');
       setRecentSmsLoading(false);
       return [];
     }
 
     try {
-      console.log('fetchRecentSms: Récupération des 5 derniers SMS...');
       const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes?limit=5', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -581,15 +578,20 @@ export default function DashboardPage() {
         throw new Error(`Erreur ${response.status} lors du chargement des SMS récents`);
       }
 
-      const smsList = await response.json();
-      console.log(`fetchRecentSms: ${Array.isArray(smsList) ? smsList.length : 0} SMS récupérés`);
+      let smsList = await response.json();
 
       if (!Array.isArray(smsList)) {
         console.error('La réponse des SMS n\'est pas un tableau:', smsList);
         return [];
       }
 
-      return smsList;
+      // Trier par date de mise à jour (du plus récent au plus ancien)
+      smsList = smsList.sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+
+      // Prendre les 5 premiers
+      return smsList.slice(0, 5);
 
     } catch (error) {
       console.error('Erreur lors du chargement des tickets:', error);
@@ -642,15 +644,11 @@ export default function DashboardPage() {
         fetchYearlySmsStats()
       ]);
 
-      console.log('Données initiales chargées avec succès', {
-        tickets: Array.isArray(ticketsData) ? ticketsData.length : ticketsData,
-        smsCount: smsData,
-        pendingSms: pendingData,
-        activeClients: clientsData,
-        billingData: Array.isArray(billingData) ? billingData.length : billingData,
-        recentSms: Array.isArray(recentSmsData) ? recentSmsData.length : recentSmsData,
-        yearlyStats
-      });
+      // Mettre à jour les états avec les données chargées
+      setActiveClientsCount(Array.isArray(clientsData) ? clientsData.length : 0);
+      setBillingData(Array.isArray(billingData) ? billingData : []);
+      setRecentSms(Array.isArray(recentSmsData) ? recentSmsData : []);
+      setYearlySmsStats(yearlyStats || []);
 
       // Mettre à jour les états
       if (Array.isArray(ticketsData)) {
@@ -734,15 +732,15 @@ export default function DashboardPage() {
           fetchYearlySmsStats()
         ]);
 
-        console.log('Données initiales chargées avec succès', {
-          tickets: Array.isArray(ticketsData) ? ticketsData.length : ticketsData,
-          smsCount: smsData,
-          pendingSms: pendingData,
-          activeClients: clientsData,
-          billingData: Array.isArray(billingData) ? billingData.length : billingData,
-          recentSms: Array.isArray(recentSmsData) ? recentSmsData.length : recentSmsData,
-          yearlyStats
-        });
+        // Mise à jour des états avec les données chargées
+        setActiveClients(Array.isArray(clientsData) ? clientsData.length : 0);
+        setBillingData(Array.isArray(billingData) ? billingData : []);
+        setRecentSms(Array.isArray(recentSmsData) ? recentSmsData : []);
+        // Mise à jour des statistiques SMS avec les données annuelles
+        setSmsStats(prev => ({
+          ...prev,
+          yearlyData: Array.isArray(yearlyStats) ? yearlyStats : []
+        }));
 
         // Mettre à jour les états
         if (Array.isArray(ticketsData)) {
@@ -814,17 +812,29 @@ export default function DashboardPage() {
       }, { OUVERT: 0, EN_COURS: 0, FERME: 0 });
 
       setTicketStats(stats);
+    } else {
+      setTicketStats({ OUVERT: 0, EN_COURS: 0, FERME: 0 });
     }
   }, [tickets]);
 
   // Données pour le graphique circulaire
-  const ticketData = Object.entries(ticketStats)
+  const ticketData = useMemo(() => {
+    const data = Object.entries(ticketStats)
       .filter(([_, value]) => value > 0) // Ne garder que les statuts avec au moins un ticket
       .map(([name, value]) => ({
         name: name.charAt(0) + name.slice(1).toLowerCase(), // Mettre en forme le nom
         value,
         color: statusColors[name] || '#9CA3AF' // Couleur par défaut gris
-      }))
+      }));
+    
+    return data;
+  }, [ticketStats]);
+
+  // Effet pour suivre les mises à jour de ticketData
+  // Effet pour suivre les mises à jour de ticketData
+  useEffect(() => {
+    // Suivi des mises à jour de ticketData
+  }, [ticketData]);
 
   // Pourcentage total pour la légende
   const totalTickets = Object.values(ticketStats).reduce((a, b) => a + b, 0)
@@ -1081,19 +1091,7 @@ export default function DashboardPage() {
           const sentData = await sentResponse.json()
           const pendingData = await pendingResponse.json()
 
-          console.log('=== DONNÉES BRUTES ===')
-          console.log('SMS envoyés (raw):', JSON.stringify(sentData, null, 2))
-          console.log('SMS en attente (raw):', JSON.stringify(pendingData, null, 2))
-
-          // Vérifier la structure des données
-          console.log('=== STRUCTURE DES DONNÉES ===')
-          console.log('Est-ce que sentData est un tableau?', Array.isArray(sentData))
-          console.log('Est-ce que pendingData est un tableau?', Array.isArray(pendingData))
-
-          if (Array.isArray(pendingData) && pendingData.length > 0) {
-            console.log('Premier SMS en attente:', JSON.stringify(pendingData[0], null, 2))
-          }
-
+  
           // Vérifier et formater les données
           const formatSmsDate = (dateStr: string | null | undefined): string => {
             if (!dateStr) return formatDate(new Date());
@@ -1151,9 +1149,6 @@ export default function DashboardPage() {
               }))
               .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-          console.log('=== DONNÉES FORMATÉES ===');
-          console.log('Nombre de dates uniques:', formattedData.length);
-          console.log('Données formatées:', JSON.stringify(formattedData, null, 2));
 
           // Mettre à jour les compteurs totaux
           const totalSent = formattedData.reduce((sum, item) => sum + item.sent, 0);
@@ -1217,8 +1212,6 @@ export default function DashboardPage() {
       pending: dateCounts[day.date]?.pending || 0
     }));
 
-    console.log('=== DONNÉES POUR LE GRAPHIQUE ===');
-    console.log(JSON.stringify(dailyCounts, null, 2));
 
     return dailyCounts;
   }, [smsData])
@@ -1346,71 +1339,85 @@ export default function DashboardPage() {
                   ) : (
                       <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart
-                              data={activityData}
-                              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                          <AreaChart 
+                            data={activityData}
+                            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                           >
                             <defs>
                               <linearGradient id="colorSent" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05}/>
+                                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.02}/>
                               </linearGradient>
                               <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.05}/>
+                                <stop offset="5%" stopColor="hsl(var(--warning))" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="hsl(var(--warning))" stopOpacity={0.02}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
                             <XAxis
                                 dataKey="name"
-                                tick={{ fill: '#6b7280' }}
-                                axisLine={false}
+                                stroke="#888888"
+                                fontSize={12}
                                 tickLine={false}
+                                axisLine={false}
+                                className="text-xs"
                             />
                             <YAxis
-                                tick={{ fill: '#6b7280' }}
-                                axisLine={false}
+                                stroke="#888888"
+                                fontSize={12}
                                 tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value) => `${value}`}
+                                className="text-xs"
                             />
-                            <Area
-                                type="monotone"
-                                dataKey="sent"
-                                stroke="#3b82f6"
-                                strokeWidth={2}
-                                fillOpacity={0.8}
-                                fill="url(#colorSent)"
-                                name="SMS Envoyés"
-                                activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="pending"
-                                stroke="#f59e0b"
-                                strokeWidth={2}
-                                fillOpacity={0.8}
-                                fill="url(#colorPending)"
-                                name="SMS En attente"
-                                activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-                            />
-                            <RechartsTooltip
-                                contentStyle={{
-                                  backgroundColor: 'white',
-                                  borderRadius: '0.5rem',
-                                  border: '1px solid #e5e7eb',
-                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                                }}
-                                formatter={(value: number, name: string) => [`${value} ${name}`, '']}
-                                labelFormatter={(label) => `Jour: ${label}`}
+                            <RechartsTooltip 
+                              contentStyle={{
+                                backgroundColor: 'hsl(var(--background))',
+                                borderColor: 'hsl(var(--border))',
+                                borderRadius: 'var(--radius)',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
+                              formatter={(value: number, name: string) => [
+                                <span key="value" className="text-sm text-muted-foreground">
+                                  {value} {name}
+                                </span>,
+                                ''
+                              ]}
+                              labelFormatter={(label) => `Jour: ${label}`}
                             />
                             <Legend
                                 layout="horizontal"
                                 verticalAlign="bottom"
                                 align="center"
-                                formatter={(value, entry, index) => (
-                                    <span className="text-sm text-muted-foreground">
-                            {value}
-                          </span>
+                                formatter={(value) => (
+                                  <span className="text-xs text-muted-foreground">
+                                    {value}
+                                  </span>
                                 )}
+                            />
+                            <RechartsArea
+                                type="monotone"
+                                dataKey="sent"
+                                stroke="hsl(var(--primary))"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorSent)"
+                                name="SMS Envoyés"
+                                activeDot={{ r: 6, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+                                yAxisId={0}
+                                className="fill-primary/10"
+                            />
+                            <RechartsArea
+                                type="monotone"
+                                dataKey="pending"
+                                stroke="hsl(var(--warning))"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#colorPending)"
+                                name="SMS En attente"
+                                activeDot={{ r: 6, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
+                                yAxisId={0}
+                                className="fill-warning/10"
                             />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -1429,40 +1436,66 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
+                    {ticketData && ticketData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart width={400} height={300}>
+                          <RechartsPie
                             data={ticketData}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            outerRadius={80}
-                            fill="#8884d8"
+                            outerRadius={100}
+                            innerRadius={60}
+                            paddingAngle={2}
                             dataKey="value"
-                            label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
-                        >
-                          {ticketData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <RechartsTooltip
-                            formatter={(value, name, props) => {
-                              const percent = (Number(value) / ticketData.reduce((a, b) => a + b.value, 0)) * 100;
-                              return [`${value} tickets (${percent.toFixed(1)}%)`, name];
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                            fill="#8884d8"
+                            style={{
+                              fontSize: '12px',
+                              fontWeight: '500',
                             }}
-                        />
-                        <Legend
-                            layout="vertical"
-                            verticalAlign="middle"
-                            align="right"
-                            formatter={(value, entry, index) => (
-                                <span className="text-sm text-muted-foreground">
-                            {value}
-                          </span>
-                            )}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                          >
+                            {ticketData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={statusColors[entry.name.toUpperCase()] || COLORS[index % COLORS.length]} 
+                                stroke="#fff"
+                                strokeWidth={1}
+                              />
+                            ))}
+                          </RechartsPie>
+                          <Legend 
+                            layout="horizontal"
+                            verticalAlign="bottom"
+                            align="center"
+                            iconType="circle"
+                            wrapperStyle={{
+                              paddingTop: '20px',
+                              fontSize: '12px',
+                            }}
+                          />
+                          <RechartsTooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              borderColor: 'hsl(var(--border))',
+                              borderRadius: 'var(--radius)'
+                            }}
+                            formatter={(value, name) => [
+                              <span key="value" className="text-sm text-muted-foreground">
+                                {value}
+                              </span>,
+                              name
+                            ]}
+                            labelFormatter={(label) => `Statut: ${label}`}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center">
+                        <p className="text-muted-foreground">Aucune donnée disponible</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1479,25 +1512,36 @@ export default function DashboardPage() {
                 {smsStats.yearlyData && smsStats.yearlyData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={smsStats.yearlyData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
                         <XAxis
                             dataKey="year"
-                            tick={{ fontSize: 12 }}
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            className="text-xs"
                         />
                         <YAxis
-                            tick={{ fontSize: 12 }}
-                            width={40}
+                            stroke="#888888"
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(value) => `${value}`}
+                            className="text-xs"
                         />
-                        <Tooltip
-                            formatter={(value) => [`${value} SMS`, 'Messages envoyés']}
-                            labelFormatter={(label) => `Année: ${label}`}
+                        <RechartsTooltip 
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                            borderRadius: 'var(--radius)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                          }}
                         />
-                        <Legend />
                         <Bar
                             dataKey="count"
-                            name="Messages envoyés"
-                            fill="#3b82f6"
                             radius={[4, 4, 0, 0]}
+                            className="fill-primary"
+                            yAxisId={0}
                         />
                       </BarChart>
                     </ResponsiveContainer>

@@ -58,7 +58,6 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
     const loadIndicatifs = async () => {
       try {
         const data = await getIndicatifs()
-        console.log('Données brutes des indicatifs:', data)
         // Vérifier les doublons
         const seen = new Set()
         const duplicates = data.filter(ind => {

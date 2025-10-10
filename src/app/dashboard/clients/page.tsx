@@ -80,16 +80,13 @@ export default function ClientsPage() {
 
             if (!response.ok) {
                 const errorText = await response.text()
-                console.error('Erreur API:', response.status, errorText)
                 throw new Error(`Erreur API: ${response.status} - ${errorText}`)
             }
 
             const data = await response.json()
-            console.log('Réponse API brute:', data)
 
             // Vérifier si la réponse est un tableau
             if (!Array.isArray(data)) {
-                console.error('La réponse de l\'API n\'est pas un tableau:', data)
                 throw new Error('Format de réponse inattendu de l\'API')
             }
 
@@ -105,13 +102,6 @@ export default function ClientsPage() {
             const totalElements = sortedClients.length
             const totalPages = Math.ceil(totalElements / size)
             
-            console.log('Données traitées:', {
-                nbClients: sortedClients.length,
-                totalElements,
-                totalPages,
-                page
-            })
-
             // Mettre à jour les états de pagination
             setTotalPages(totalPages)
             setTotalElements(totalElements)
@@ -220,25 +210,22 @@ export default function ClientsPage() {
     const extractPhoneNumber = (phoneWithCode: string) => {
       if (!phoneWithCode) return { indicatif: pays[0]?.value1 || "France", numero: "" };
       
-      console.log('Extraction du numéro - Entrée:', phoneWithCode);
-      
       // Nettoyer le numéro (supprimer les espaces, tirets, etc.)
       const cleaned = phoneWithCode.replace(/[^\d+]/g, '');
-      console.log('Numéro nettoyé:', cleaned);
       
       // Vérifier d'abord le format +33 (France)
       if (cleaned.startsWith('+33') || cleaned.startsWith('0033')) {
-        const codePays = cleaned.startsWith('+') ? '+33' : '0033';
-        const numero = cleaned.substring(codePays.length);
+        let numero = cleaned.startsWith('+33') 
+          ? cleaned.substring(3) 
+          : cleaned.substring(4);
+        
+        // Si le numéro commence par 0 après l'indicatif, on le supprime
+        if (numero.startsWith('0')) {
+          numero = numero.substring(1);
+        }
         
         // Trouver la France dans la liste des pays
         const france = pays.find(p => p.value1 === 'France' || p.value2 === '+33');
-        
-        console.log('Numéro français détecté:', { 
-          codePays, 
-          numero,
-          pays: france 
-        });
         
         return {
           indicatif: france?.value1 || 'France',
@@ -246,7 +233,7 @@ export default function ClientsPage() {
         };
       }
       
-      // Pour les autres pays, essayer de trouver un indicatif correspondant
+      // Vérifier les autres pays
       for (const p of pays) {
         if (!p.value2) continue;
         
@@ -255,14 +242,8 @@ export default function ClientsPage() {
         
         // Vérifier si le numéro commence par l'indicatif du pays
         if (cleaned.startsWith(codePays)) {
-          console.log('Indicatif trouvé:', { 
-            pays: p.value1, 
-            indicatif: p.value2, 
-            numero: cleaned.substring(codePays.length) 
-          });
-          
           return {
-            indicatif: p.value1, // Utiliser value1 comme identifiant du pays
+            indicatif: p.value1,
             numero: cleaned.substring(codePays.length)
           };
         }
@@ -270,16 +251,11 @@ export default function ClientsPage() {
       
       // Si le numéro commence par + mais qu'aucun pays n'a été trouvé
       if (cleaned.startsWith('+')) {
-        console.log('Aucun pays trouvé pour l\'indicatif, utilisation de l\'indicatif tel quel');
         // Essayer d'extraire les 2-3 premiers chiffres après le +
         const codePaysMatch = cleaned.match(/^\+([0-9]{1,3})/);
         if (codePaysMatch) {
-          // Chercher un pays avec ce code
-          const code = `+${codePaysMatch[1]}`;
-          const paysTrouve = pays.find(p => p.value2 === code);
-          
           return {
-            indicatif: paysTrouve?.value1 || code,
+            indicatif: `+${codePaysMatch[1]}`,
             numero: cleaned.substring(codePaysMatch[0].length)
           };
         }
@@ -287,21 +263,17 @@ export default function ClientsPage() {
       
       // Si le numéro commence par 00 (format international)
       if (cleaned.startsWith('00')) {
-        console.log('Format 00 détecté, conversion en +');
         const codePaysMatch = cleaned.match(/^00([0-9]{1,3})/);
         if (codePaysMatch) {
           const code = `+${codePaysMatch[1]}`;
-          const paysTrouve = pays.find(p => p.value2 === code);
-          
           return {
-            indicatif: paysTrouve?.value1 || code,
+            indicatif: code,
             numero: cleaned.substring(codePaysMatch[0].length)
           };
         }
       }
       
       // Si aucun indicatif n'est trouvé, considérer le numéro tel quel
-      console.log('Aucun indicatif trouvé, utilisation du numéro tel quel');
       return {
         indicatif: pays[0]?.value1 || "France",
         numero: cleaned
@@ -311,94 +283,67 @@ export default function ClientsPage() {
     // Extraire l'indicatif et le numéro
     const { indicatif, numero } = extractPhoneNumber(client.telephoneAvecIndicatif || client.telephone || "");
     
-    console.log('Extraction du numéro:', { telephoneAvecIndicatif: client.telephoneAvecIndicatif, telephone: client.telephone, indicatif, numero });
-    
-    // Trouver le pays correspondant à l'indicatif
-    console.log('Recherche du pays pour l\'indicatif:', indicatif);
-    
     // D'abord essayer de trouver par value1 (nom du pays)
     let paysClient = pays.find(p => p.value1 === indicatif);
     
     // Si pas trouvé, essayer de trouver par value2 (indicatif avec +)
     if (!paysClient) {
-      console.log('Pays non trouvé par value1, recherche par value2');
       paysClient = pays.find(p => p.value2 === indicatif);
     }
     
     // Si toujours pas trouvé, essayer de trouver par indicatif numérique
     if (!paysClient) {
-      console.log('Pays non trouvé par value2, recherche par indicatif numérique');
       const indicatifNumerique = indicatif.replace(/\D/g, '');
-      paysClient = pays.find(p => p.value2.replace(/\D/g, '') === indicatifNumerique);
+      paysClient = pays.find(p => p.value2 && p.value2.replace(/\D/g, '') === indicatifNumerique);
     }
     
     // Si toujours pas trouvé, prendre le premier pays
     if (!paysClient && pays.length > 0) {
-      console.log('Aucun pays trouvé, utilisation du premier pays disponible');
       paysClient = pays[0];
     }
     
-    console.log('Pays trouvé pour l\'indicatif', indicatif, ':', paysClient);
-    
     // Préparer les données du formulaire
     const formData = {
-      raisonSociale: client.raisonSociale,
-      secteurActivite: client.secteurActivite,
-      ville: client.ville,
-      adresse: client.adresse,
-      telephone: numero,
-      email: client.email,
-      nif: client.nif,
-      rccm: client.rccm,
-      emetteur: client.emetteur || "",
-      coutSmsTtc: client.coutSmsTtc || 25,
-      typeCompte: client.typeCompte || "POSTPAYE",
-      indicatifPays: paysClient?.value1 || pays[0]?.value1 || "", // Utiliser value1 comme identifiant du pays
+      raisonSociale: client.raisonSociale || "",
+      secteurActivite: client.secteurActivite || (secteurs[0]?.value1 || ""),
+      ville: client.ville || "",
+      adresse: client.adresse || "",
+      telephone: numero || "",
+      email: client.email || "",
+      nif: client.nif || "",
+      rccm: client.rccm || "",
+      pays: paysClient?.value1 || pays[0]?.value1 || "",
+      indicatifPays: paysClient?.value2 || pays[0]?.value2 || "",
       telephoneAvecIndicatif: paysClient?.value2 && numero ? `${paysClient.value2}${numero}` : ""
     };
     
-    console.log('Données du formulaire d\'édition:', formData);
     setEditForm(formData);
         setIsEditDialogOpen(true)
     }
 
     const closeEditDialog = () => {
-        setIsEditDialogOpen(false)
-        setCurrentClient(null)
-    }
+        setIsEditDialogOpen(false);
+        setCurrentClient(null);
+    };
 
-    const toggleClientStatus = async (client: Client) => {
-        const currentToken = getToken()
-        if (!currentToken) {
-            toast.error("Non authentifié")
-            return
-        }
-
-        const newStatus = client.statutCompte === "ACTIF" ? "SUSPENDU" : "ACTIF"
+    const toggleClientStatus = async (client: Client, newStatus: "ACTIF" | "SUSPENDU") => {
         const endpoint = newStatus === "SUSPENDU" 
             ? `${API_BASE_URL}/api/V1/clients/${client.idclients}/suspend`
             : `${API_BASE_URL}/api/V1/clients/${client.idclients}/reactivate`
         
         try {
-            console.log(`Tentative de changement de statut pour le client ${client.idclients} vers ${newStatus}`)
-            console.log(`URL: ${endpoint}`)
-            
             const response = await fetch(endpoint, {
                 method: "POST",
                 headers: {
-                    Authorization: `Bearer ${currentToken}`,
-                    Accept: "application/json",
                     "Content-Type": "application/json",
-                }
+                    Authorization: `Bearer ${getToken()}`,
+                },
             })
 
             if (!response.ok) {
                 const errorText = await response.text()
-                console.error("Erreur API statut:", response.status, errorText)
                 throw new Error(`Erreur API: ${response.status} - ${errorText}`)
             }
-
-            console.log(`Statut du client ${client.idclients} changé avec succès vers ${newStatus}`)
             
             // Mise à jour optimiste de l'interface
             setClients(prevClients =>
@@ -440,11 +385,8 @@ export default function ClientsPage() {
                     ? `${paysSelectionne.value2}${formData.telephone.replace(/\D/g, '')}`
                     : formData.telephone
             };
-            
-            console.log('Données à envoyer à l\'API:', dataToSend);
 
             const url = `${API_BASE_URL}/api/V1/clients/${currentClient.idclients}`
-            console.log('Envoi des données de mise à jour:', dataToSend)
             
             const response = await fetch(url, {
                 method: "PATCH",
@@ -491,8 +433,6 @@ export default function ClientsPage() {
                 indicatifPays: formData.indicatifPays,
                 telephoneAvecIndicatif: formData.telephoneAvecIndicatif
             };
-
-            console.log('Données envoyées à l\'API:', dataToSend);
 
             const response = await fetch(`${API_BASE_URL}/api/V1/clients`, {
                 method: "POST",

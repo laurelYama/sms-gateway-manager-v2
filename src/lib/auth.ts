@@ -13,9 +13,7 @@ export function setToken(token: string): void {
         // Décoder et sauvegarder aussi les données utilisateur
         const userData = decodeToken(token);
         if (userData) {
-            console.log('Définition du rôle dans le localStorage:', userData.role);
             localStorage.setItem(USER_DATA_KEY, JSON.stringify(userData));
-            console.log('Rôle après stockage:', JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}').role);
         }
     }
 }
@@ -23,21 +21,7 @@ export function setToken(token: string): void {
 // Récupérer le token
 export function getToken(): string | null {
     if (typeof window !== "undefined") {
-        const token = localStorage.getItem(TOKEN_KEY);
-        console.group('Récupération du token:');
-        console.log('Token brut:', token ? `${token.substring(0, 20)}...` : 'null');
-        
-        if (token) {
-            try {
-                const decoded = decodeToken(token);
-                console.log('Rôle dans le token décodé:', decoded?.role);
-            } catch (e) {
-                console.error('Erreur lors du décodage du token:', e);
-            }
-        }
-        
-        console.groupEnd();
-        return token;
+        return localStorage.getItem(TOKEN_KEY);
     }
     return null;
 }
@@ -47,9 +31,7 @@ export function getUserData(): UserToken | null {
     if (typeof window !== "undefined") {
         const userData = localStorage.getItem(USER_DATA_KEY);
         if (userData) {
-            const parsedData = JSON.parse(userData);
-            console.log('Données utilisateur du localStorage:', parsedData);
-            return parsedData;
+            return JSON.parse(userData);
         }
     }
     return null;
@@ -95,13 +77,7 @@ export function decodeToken(token: string): UserToken | null {
         const userData = JSON.parse(decoded);
         
         // Log détaillé du rôle avant et après traitement
-        if (process.env.NODE_ENV === 'development') {
-            console.group('Décodage du token:');
-            console.log('Token complet décodé:', userData);
-            console.log('Rôle dans le token:', userData?.role);
-            console.log('Type du rôle:', typeof userData?.role);
-            console.groupEnd();
-        }
+        // Logs désactivés en production
         
         return userData || null;
     } catch (error) {
@@ -135,7 +111,6 @@ export function useAuth() {
     const updateUserDataFromToken = useCallback((token: string) => {
         const decoded = decodeToken(token);
         if (decoded) {
-            console.log('Mise à jour des données utilisateur depuis le token:', decoded);
             setUserData(decoded);
             // Mettre à jour également le stockage local pour la cohérence
             localStorage.setItem(USER_DATA_KEY, JSON.stringify(decoded));

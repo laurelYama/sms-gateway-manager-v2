@@ -39,7 +39,6 @@ export function TicketList() {
         try {
             setLoading(true)
             const data = await fetchTickets()
-            console.log('Tickets chargés:', data) // Debug
             setTickets(data)
         } catch (err) {
             setError('Erreur lors du chargement des tickets')
@@ -52,35 +51,22 @@ export function TicketList() {
     // Filtrer les tickets selon les règles métier
     const filteredTickets = useMemo(() => {
         if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
-            console.log('Aucun ticket à filtrer')
-            return []
+            return [];
         }
 
-        console.log('Filtrage des tickets:', tickets.length)
-        const threeMonthsAgo = subMonths(new Date(), 3)
+        const threeMonthsAgo = subMonths(new Date(), 3);
 
         return tickets.filter(ticket => {
-            if (!ticket) return false
-            
-            // Pour le débogage
-            console.log('Ticket en cours de traitement:', {
-                id: ticket.id,
-                statut: ticket.statut,
-                createdAt: ticket.createdAt
-            })
+            if (!ticket) return false;
             
             // Toujours afficher les tickets ouverts, peu importe la date
             if (ticket.statut === 'OUVERT') {
-                console.log('Ticket ouvert conservé:', ticket.id, ticket.statut)
-                return true
+                return true;
             }
 
-            // Pour les autres statuts, n'afficher que ceux des 3 derniers mois
             try {
-                const ticketDate = new Date(ticket.createdAt)
-                const isRecent = isAfter(ticketDate, threeMonthsAgo)
-                console.log('Ticket récent:', ticket.id, isRecent, ticketDate)
-                return isRecent
+                const ticketDate = new Date(ticket.createdAt);
+                return isAfter(ticketDate, threeMonthsAgo);
             } catch (e) {
                 console.error('Erreur de date pour le ticket:', ticket.id, e)
                 return false
@@ -90,24 +76,14 @@ export function TicketList() {
 
     // Filtrer par statut
     const ticketsByStatus = useMemo(() => {
-        console.log('=== FILTRAGE PAR STATUT ===')
-        console.log('Filtre actuel:', statusFilter)
-        console.log('Tickets à filtrer:', filteredTickets)
-        
         if (statusFilter === 'TOUS') {
-            console.log('Retour de tous les tickets:', filteredTickets)
-            return filteredTickets
+            return filteredTickets;
         }
         
-        const filtered = filteredTickets.filter(ticket => {
-            if (!ticket) return false
-            const matches = ticket.statut === statusFilter
-            console.log(`Ticket ${ticket.id} - Statut: ${ticket.statut} - Correspond: ${matches}`)
-            return matches
+        return filteredTickets.filter(ticket => {
+            if (!ticket) return false;
+            return ticket.statut === statusFilter;
         })
-        
-        console.log('Tickets après filtrage:', filtered)
-        return filtered
     }, [filteredTickets, statusFilter])
 
     // Pagination
@@ -236,23 +212,9 @@ export function TicketList() {
         { value: 'FERME', label: 'Fermés' }
     ]
 
-    // Debug: afficher les données
-    console.log('=== DÉBOGAGE TICKETS ===')
-    console.log('Tickets bruts:', JSON.parse(JSON.stringify(tickets)))
-    console.log('Tickets filtrés:', JSON.parse(JSON.stringify(filteredTickets)))
-    console.log('Tickets par statut:', JSON.parse(JSON.stringify(ticketsByStatus)))
-    console.log('Filtre actuel:', statusFilter)
-    console.log('Items courants:', JSON.parse(JSON.stringify(currentItems)))
-    console.log('=== FIN DÉBOGAGE ===')
-    
     // Vérifier si les tickets sont bien formés
-    if (tickets.length > 0) {
-        console.log('Premier ticket:', {
-            id: tickets[0].id,
-            statut: tickets[0].statut,
-            createdAt: tickets[0].createdAt,
-            hasResponse: !!tickets[0].reponseAdmin
-        })
+    if (tickets.length > 0 && !tickets[0].id) {
+        console.error('Erreur: le premier ticket ne contient pas d\'ID valide');
     }
 
     if (loading) return (
@@ -356,15 +318,35 @@ export function TicketList() {
                                         <div className="p-4 border-b bg-gray-50">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <Badge
-                                                            className={`${getStatusBadgeVariant(ticket.statut)} border font-medium`}
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <Badge
+                                                                className={`${getStatusBadgeVariant(ticket.statut)} border font-medium`}
+                                                            >
+                                                                {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En cours' : ticket.statut}
+                                                            </Badge>
+                                                            <h3 className="font-semibold text-gray-900 truncate">
+                                                                {ticket.titre}
+                                                            </h3>
+                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => toggleTicketExpansion(ticket.id)}
+                                                            className="text-gray-600 hover:bg-gray-100"
                                                         >
-                                                            {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En cours' : ticket.statut}
-                                                        </Badge>
-                                                        <h3 className="font-semibold text-gray-900 truncate">
-                                                            {ticket.titre}
-                                                        </h3>
+                                                            {expandedTickets.has(ticket.id) ? (
+                                                                <>
+                                                                    <ChevronUp className="h-4 w-4 mr-1" />
+                                                                    Réduire
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Eye className="h-4 w-4 mr-1" />
+                                                                    Détails
+                                                                </>
+                                                            )}
+                                                        </Button>
                                                     </div>
 
                                                     <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -433,7 +415,7 @@ export function TicketList() {
                                                             />
                                                             <div className="flex justify-end">
                                                                 <Button
-                                                                    onClick={() => handleReplySubmit()}
+                                                                    onClick={() => handleSendReply(ticket.id)}
                                                                     disabled={!replyText.trim() || isSubmitting}
                                                                     className="bg-blue-600 hover:bg-blue-700 text-white"
                                                                 >

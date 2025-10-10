@@ -28,11 +28,9 @@ export interface UserEmailParams {
 export const auditLogService = {
   async getAllLogs(): Promise<AuditLog[]> {
     const token = getToken();
-    console.log('Token:', token ? 'présent' : 'manquant');
     if (!token) throw new Error('Non authentifié');
 
     try {
-      console.log('Tentative de récupération des logs depuis:', `${API_BASE_URL}/api/v1/audit-logs`);
       const response = await fetch(`${API_BASE_URL}/api/v1/audit-logs`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -40,17 +38,12 @@ export const auditLogService = {
         },
       });
 
-      console.log('Réponse du serveur:', response.status, response.statusText);
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Erreur du serveur:', errorData);
         throw new Error(errorData.message || `Erreur ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('Logs récupérés avec succès:', data.length, 'entrées');
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('Erreur lors de la récupération des logs:', error);
       throw error;

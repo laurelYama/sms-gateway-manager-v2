@@ -30,34 +30,23 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function UsersPage() {
-  console.log('Rendu de la page UsersPage')
   const { token, isAuthenticated, loading: authLoading, user } = useAuth()
   const router = useRouter()
   
   // Rediriger vers la page de connexion si non authentifié
   useEffect(() => {
-    console.log('useEffect - Vérification de l\'authentification', { 
-      isAuthenticated, 
-      authLoading,
-      hasToken: !!token,
-      tokenValid: token ? !isTokenExpired(token) : false
-    });
-
     // Si le chargement est terminé et que l'utilisateur n'est pas authentifié, rediriger vers /login
     if (authLoading === false) {
       if (!isAuthenticated) {
-        console.log('Non authentifié, redirection vers /login')
         router.push('/login')
       } else {
         // Vérifier le rôle - Seul le SUPER_ADMIN peut accéder à cette section
         if (user?.role !== 'SUPER_ADMIN') {
-          console.log('Rôle insuffisant, redirection vers /unauthorized')
           toast.error('Accès réservé aux SUPER_ADMIN')
           router.push('/unauthorized')
           return
         }
         // Charger les données si l'utilisateur est authentifié
-        console.log('Utilisateur authentifié, chargement des données...')
         fetchManagers()
       }
     }
@@ -84,10 +73,8 @@ export default function UsersPage() {
 
   // Charger tous les utilisateurs
   const fetchManagers = useCallback(async (search = searchQuery, isAutoRefresh = false) => {
-    console.log('fetchManagers appelé avec search:', search, 'autoRefresh:', isAutoRefresh);
     const currentToken = token || getToken();
     if (!currentToken) {
-      console.error('Aucun token JWT disponible');
       if (!isAutoRefresh) {
         setLoading(false);
         setInitialLoad(false);
@@ -97,7 +84,6 @@ export default function UsersPage() {
     }
     
     if (isTokenExpired(currentToken)) {
-      console.log('Token expiré, déconnexion...');
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token');
         window.location.href = '/login';
@@ -106,7 +92,6 @@ export default function UsersPage() {
     }
 
     if (!isAutoRefresh) {
-      console.log('Début du chargement des données...');
       setLoading(true);
     }
     
@@ -126,7 +111,6 @@ export default function UsersPage() {
           url.searchParams.append('search', search);
         }
 
-        console.log(`Tentative de connexion à: ${url.toString()}`);
         const response = await fetch(url.toString(), {
           headers: {
             'Authorization': `Bearer ${currentToken}`,
@@ -136,8 +120,6 @@ export default function UsersPage() {
           credentials: 'include',
           mode: 'cors'
         });
-
-        console.log('Statut de la réponse:', response.status);
         
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
@@ -145,7 +127,6 @@ export default function UsersPage() {
         }
 
         const data = await response.json();
-        console.log(`Réponse API réussie depuis ${url}:`, data);
         
         // Extraire les managers de la réponse
         const allManagers = Array.isArray(data) ? data : (data.content || data.data || []);
@@ -160,7 +141,6 @@ export default function UsersPage() {
           setInitialLoad(false);
         }
         
-        console.log('Données mises à jour avec succès', { isAutoRefresh });
         return allManagers;
         
       } catch (error) {
@@ -224,8 +204,6 @@ export default function UsersPage() {
 
   // Filtrer les managers en fonction de la recherche et du rôle
   const filteredManagers = useMemo(() => {
-    console.log('Filtrage des managers avec:', { searchQuery, roleFilter, totalManagers: managers?.length });
-    
     if (!managers || managers.length === 0) return [];
     
     const filtered = managers.filter(manager => {
@@ -244,7 +222,6 @@ export default function UsersPage() {
       return matchesSearch && matchesRole;
     });
     
-    console.log('Résultats du filtrage:', filtered.length);
     return filtered;
   }, [managers, searchQuery, roleFilter]);
 
@@ -261,8 +238,6 @@ export default function UsersPage() {
   
   // Obtenir les managers pour la page courante
   const paginatedManagers = useMemo(() => {
-    console.log('Pagination des managers:', { currentPage, pageSize, totalFiltered: filteredManagers.length });
-    
     // Mettre à jour le nombre total de pages
     const total = Math.ceil(filteredManagers.length / pageSize) || 1;
     setTotalPages(total);
@@ -281,13 +256,11 @@ export default function UsersPage() {
   // Effet pour charger les données initiales
   // Effet pour le chargement initial et le rafraîchissement
   useEffect(() => {
-    console.log('useEffect - Chargement initial des données');
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
     
     const loadData = async () => {
-      console.log('loadData appelé, isMounted:', isMounted, 'retryCount:', retryCount);
       if (!isMounted) return;
       
       try {
@@ -296,8 +269,6 @@ export default function UsersPage() {
       } catch (error) {
         if (!isMounted) return;
         
-        console.error('Erreur lors du chargement des données:', error);
-        
         // Ne pas afficher l'erreur si c'est une erreur d'annulation
         if (error.name === 'AbortError') return;
         
@@ -305,7 +276,6 @@ export default function UsersPage() {
         if (retryCount < maxRetries) {
           retryCount++;
           const delay = 1000 * Math.pow(2, retryCount); // Délai exponentiel
-          console.log(`Nouvelle tentative dans ${delay}ms (${retryCount}/${maxRetries})`);
           
           await new Promise(resolve => setTimeout(resolve, delay));
           if (isMounted) loadData();
@@ -564,9 +534,8 @@ export default function UsersPage() {
               },
               credentials: 'include'
             });
-            console.log('URL de désarchivage désactivée avec succès');
+            // URL de désarchivage désactivée avec succès
           } catch (error) {
-            console.error('Erreur lors de la désactivation de l\'URL de désarchivage:', error);
             // On continue quand même l'archivage même si la désactivation de l'URL échoue
           }
 
@@ -654,7 +623,6 @@ export default function UsersPage() {
 
   // Afficher un message de chargement pendant la vérification d'authentification
   if (authLoading) {
-    console.log('Affichage du loader d\'authentification')
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="space-y-2">
@@ -668,13 +636,14 @@ export default function UsersPage() {
   }
 
   // Afficher un message si aucun utilisateur n'est trouvé
-  console.log('Rendu - État actuel:', { 
+  // État actuel de l'application
+  const appState = { 
     managersCount: managers.length, 
     loading, 
     initialLoad, 
     isAuthenticated,
     hasToken: !!token
-  });
+  };
   
   if (initialLoad || loading) {
     return (
