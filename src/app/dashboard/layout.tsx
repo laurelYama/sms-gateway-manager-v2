@@ -25,25 +25,34 @@ export default function DashboardLayout({
     if (!allowed) return null
 
     return (
-        <div className="flex min-h-screen bg-gray-50">
-            {/* Sidebar - Fixed */}
-            <div className="fixed top-0 left-0 h-full w-64 z-10">
+        <div className="min-h-screen bg-gray-50 flex flex-col overflow-hidden">
+            {/* Sidebar - Hidden on mobile, shown on md and up */}
+            <div className="hidden md:block fixed top-0 left-0 h-full w-64 z-10">
                 <Sidebar />
             </div>
             
-            {/* Main Content - Offset by sidebar width */}
-            <div className="flex-1 flex flex-col ml-64 min-h-screen">
-                {/* Navbar - Fixed at top */}
-                <header className="sticky top-0 z-10 bg-white shadow-sm">
+            {/* Main Content Wrapper */}
+            <div className="flex flex-col h-screen md:ml-64">
+                {/* Navbar */}
+                <header className="sticky top-0 z-10 bg-white shadow-sm flex-shrink-0">
                     <Navbar />
                 </header>
                 
-                {/* Main Content Area */}
-                <main className="flex-1 p-6 bg-gray-50">
-                    <div className="max-w-7xl mx-auto w-full">
-                        {children}
-                    </div>
-                </main>
+                {/* Scrollable Content Area */}
+                <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <main className="min-h-[calc(100vh-4rem)] px-2 sm:px-4 py-4 md:p-6 bg-gray-50 pb-16 md:pb-6">
+                        <div className="w-full max-w-7xl mx-auto">
+                            <div className="w-full">
+                                {children}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+                
+                {/* Mobile Navigation - Fixed at bottom */}
+                <div className="md:hidden fixed bottom-0 left-0 right-0 z-20">
+                    <Sidebar />
+                </div>
             </div>
         </div>
     )

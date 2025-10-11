@@ -146,8 +146,8 @@ export function LoginForm() {
             </div>
 
             {/* Partie droite - Formulaire */}
-            <div className="w-full lg:w-1/2 flex justify-center items-center p-8">
-                <div className="p-10 w-full max-w-md">
+            <div className="w-full lg:w-1/2 flex justify-center items-center p-4 sm:p-6 md:p-8 h-full">
+                <div className="w-full max-w-md p-6 sm:p-8 md:p-10">
                     {/* En-tête du formulaire */}
                     <div className="text-center mb-8">
                         {/* logo */}
@@ -187,7 +187,7 @@ export function LoginForm() {
                     )}
 
                     {/* Formulaire */}
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                         {/* Email */}
                         <div className="space-y-2">
                             <label htmlFor="email" className="block text-sm font-semibold text-gray-700">Adresse email</label>
@@ -198,7 +198,7 @@ export function LoginForm() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0072BB] focus:border-[#0072BB] transition-all duration-200 placeholder-gray-400"
+                                className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0072BB] focus:border-[#0072BB] transition-all duration-200 placeholder-gray-400"
                             />
                         </div>
 
@@ -213,7 +213,7 @@ export function LoginForm() {
                                     value={motDePasse}
                                     onChange={(e) => setMotDePasse(e.target.value)}
                                     required
-                                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0072BB] focus:border-[#0072BB] transition-all duration-200 pr-12 placeholder-gray-400"
+                                    className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0072BB] focus:border-[#0072BB] transition-all duration-200 pr-12 placeholder-gray-400"
                                 />
                                 <button
                                     type="button"
@@ -251,7 +251,7 @@ export function LoginForm() {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#0072BB] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#005b96] focus:ring-2 focus:ring-[#0072BB] focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg h-12"
+                            className="w-full bg-[#0072BB] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#005b96] focus:ring-2 focus:ring-[#0072BB] focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg h-12 text-base sm:text-md"
                         >
                             {loading ? 'Connexion en cours...' : 'Se connecter'}
                         </Button>

@@ -242,87 +242,93 @@ export function TicketList() {
     )
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Support client</h2>
-                    <p className="text-gray-600 mt-1">Gérez les demandes et questions de vos clients</p>
+        <div className="flex flex-col h-full w-full max-w-full overflow-hidden px-0 sm:px-6">
+            <div className="space-y-4 w-full h-full flex flex-col">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-2">
+                    <div className="flex-1">
+                        <div className="flex items-center justify-between gap-4">
+                            <h2 className="text-2xl font-bold text-gray-900">Support client</h2>
+                            <div className="sm:hidden">
+                                <span className="inline-flex items-center justify-center h-6 px-3 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                                    {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-gray-600 mt-1">Gérez les demandes et questions de vos clients</p>
+                    </div>
+                    <div className="hidden sm:flex items-center">
+                        <span className="inline-flex items-center justify-center h-6 px-3 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
+                            {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
+                        </span>
+                    </div>
                 </div>
-                <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                    {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
-                </div>
-            </div>
 
             {/* Filtres et contrôles */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-gray-600" />
-                        <span className="text-sm font-medium">Filtrer par :</span>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-gray-600 flex-shrink-0" />
+                    <span className="text-sm font-medium whitespace-nowrap">Filtrer par :</span>
+                    <div className="w-full sm:w-auto">
+                        <Select
+                            value={statusFilter}
+                            onValueChange={(value) => {
+                                setStatusFilter(value as TicketStatus)
+                                setCurrentPage(1)
+                            }}
+                        >
+                            <SelectTrigger className="w-full sm:w-[180px]">
+                                <SelectValue placeholder="Statut" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {statusOptions.map(option => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Select
-                        value={statusFilter}
-                        onValueChange={(value) => {
-                            setStatusFilter(value as TicketStatus)
-                            setCurrentPage(1)
-                        }}
-                    >
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Statut" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {statusOptions.map(option => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
 
-                <div className="text-xs text-gray-500 text-center">
-                    {statusFilter === 'OUVERT'
-                        ? 'Affichage de tous les tickets ouverts'
-                        : 'Affichage des tickets des 3 derniers mois'
-                    }
+                <div className="text-xs text-gray-500 text-center w-full sm:w-auto">
+                        {statusFilter === 'OUVERT'
+                            ? 'Affichage de tous les tickets ouverts'
+                            : 'Affichage des tickets des 3 derniers mois'}
+                    </div>
                 </div>
-            </div>
 
-            {!loading && currentItems.length === 0 ? (
-                <Card className="text-center py-12 border-dashed">
-                    <CardContent>
-                        <List className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                            {statusFilter === 'TOUS' ? 'Aucun ticket' : `Aucun ticket ${statusFilter.toLowerCase()}`}
-                        </h3>
-                        <p className="text-gray-500">
-                            {statusFilter === 'OUVERT'
-                                ? 'Aucun ticket ouvert pour le moment'
-                                : 'Aucun ticket correspondant à vos critères'
-                            }
-                        </p>
-                    </CardContent>
-                </Card>
-            ) : (
-                <>
-                    {/* Liste des tickets */}
-                    <div className="space-y-3">
+                {ticketsByStatus.length === 0 ? (
+                    <Card className="text-center py-12 border-dashed">
+                        <CardContent>
+                            <List className="mx-auto h-16 w-16 text-gray-300 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                {statusFilter === 'TOUS' ? 'Aucun ticket' : `Aucun ticket ${statusFilter.toLowerCase()}`}
+                            </h3>
+                            <p className="text-gray-500">
+                                {statusFilter === 'OUVERT' 
+                                    ? 'Aucun ticket ouvert pour le moment' 
+                                    : 'Aucun ticket correspondant à vos critères'}
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Liste des tickets */}
+                        <div className="flex-1 overflow-y-auto space-y-3 pb-4">
                         {currentItems.map((ticket) => {
-                            const isExpanded = expandedTickets.has(ticket.id)
-                            const hasResponse = !!ticket.reponseAdmin
+                            const isExpanded = expandedTickets.has(ticket.id);
+                            const hasResponse = !!ticket.reponseAdmin;
 
                             return (
-                                <Card key={ticket.id} className="overflow-hidden border hover:shadow-md transition-shadow">
+                                <Card key={ticket.id} className="overflow-hidden border hover:shadow-md transition-shadow w-full">
                                     <CardContent className="p-0">
                                         {/* Header du ticket */}
-                                        <div className="p-4 border-b bg-gray-50">
+                                        <div className="p-3 sm:p-4 border-b bg-gray-50">
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between mb-2">
                                                         <div className="flex items-center gap-3">
-                                                            <Badge
-                                                                className={`${getStatusBadgeVariant(ticket.statut)} border font-medium`}
-                                                            >
+                                                            <Badge className={`${getStatusBadgeVariant(ticket.statut)} border font-medium`}>
                                                                 {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En cours' : ticket.statut}
                                                             </Badge>
                                                             <h3 className="font-semibold text-gray-900 truncate">
@@ -335,7 +341,7 @@ export function TicketList() {
                                                             onClick={() => toggleTicketExpansion(ticket.id)}
                                                             className="text-gray-600 hover:bg-gray-100"
                                                         >
-                                                            {expandedTickets.has(ticket.id) ? (
+                                                            {isExpanded ? (
                                                                 <>
                                                                     <ChevronUp className="h-4 w-4 mr-1" />
                                                                     Réduire
@@ -388,16 +394,16 @@ export function TicketList() {
                                         </div>
 
                                         {isExpanded && (
-                                            <div className="p-4">
+                                            <div className="p-3 sm:p-4 flex flex-col gap-4">
                                                 {/* Réponse existante */}
                                                 {hasResponse && (
-                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                                                        <div className="flex items-center gap-2 mb-2">
-                                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
                                                             <h4 className="font-medium text-blue-900">Notre réponse</h4>
                                                         </div>
-                                                        <p className="text-blue-800">{ticket.reponseAdmin}</p>
-                                                        <div className="text-xs text-blue-600 mt-2">
+                                                        <p className="text-blue-800 pl-4">{ticket.reponseAdmin}</p>
+                                                        <div className="text-xs text-blue-600 mt-1 pl-4">
                                                             Répondu le {formatDate(ticket.updatedAt)}
                                                         </div>
                                                     </div>
@@ -434,13 +440,13 @@ export function TicketList() {
                                         )}
                                     </CardContent>
                                 </Card>
-                        )
-                    })}
-                </div>
+                            );
+                        })}
+                        </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 p-4 bg-gray-50 rounded-lg">
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-white border-t">
                         <div className="text-sm text-gray-600">
                             Page {currentPage} sur {totalPages} • {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
                         </div>
@@ -478,8 +484,9 @@ export function TicketList() {
                             </div>
                         </div>
                     )}
-                </>
-            )}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

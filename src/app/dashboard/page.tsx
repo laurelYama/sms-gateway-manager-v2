@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import { getToken } from '@/lib/auth'
 import { useAuth } from '@/lib/auth'
 import { fetchTickets } from '@/lib/api/tickets'
+import { API_BASE_URL } from '@/lib/config'
 import { 
   XAxis, 
   YAxis, 
@@ -194,7 +195,7 @@ export default function DashboardPage() {
       }
 
       const currentYear = new Date().getFullYear();
-      const response = await fetch(`https://api-smsgateway.solutech-one.com/api/V1/billing/exercices/${currentYear}/calendrier`, {
+      const response = await fetch(`${API_BASE_URL}/api/V1/billing/exercices/${currentYear}/calendrier`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -240,7 +241,7 @@ export default function DashboardPage() {
         return 0;
       }
 
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/clients', {
+      const response = await fetch(`${API_BASE_URL}/api/V1/clients`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -309,7 +310,7 @@ export default function DashboardPage() {
       }
 
       // Récupérer tous les SMS envoyés
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes', {
+      const response = await fetch(`${API_BASE_URL}/api/V1/sms/envoyes`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -398,7 +399,7 @@ export default function DashboardPage() {
         return
       }
 
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+      const response = await fetch(`${API_BASE_URL}/api/V1/tickets`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -439,7 +440,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+      const response = await fetch(`${API_BASE_URL}/api/V1/tickets`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -471,7 +472,7 @@ export default function DashboardPage() {
       }
 
       const response = await fetch(
-          'https://api-smsgateway.solutech-one.com/api/V1/sms/pending',
+          `${API_BASE_URL}/api/V1/sms/pending`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -564,7 +565,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/sms/envoyes?limit=5', {
+      const response = await fetch(`${API_BASE_URL}/api/V1/sms/envoyes?limit=5`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -924,7 +925,7 @@ export default function DashboardPage() {
         const token = getToken()
         if (!token) return
 
-        const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/tickets', {
+        const response = await fetch(`${API_BASE_URL}/api/V1/tickets`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
@@ -1022,7 +1023,7 @@ export default function DashboardPage() {
         const token = getToken()
         if (!token) return
 
-        const response = await fetch('https://api-smsgateway.solutech-one.com/api/V1/credits?sort=createdAt,desc&size=1', {
+        const response = await fetch(`${API_BASE_URL}/api/V1/credits?sort=createdAt,desc&size=1`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
@@ -1322,8 +1323,8 @@ export default function DashboardPage() {
           </div>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-full lg:col-span-4">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-muted-foreground" />
@@ -1427,8 +1428,8 @@ export default function DashboardPage() {
               </Card>
 
               {/* Section Répartition des tickets */}
-              <Card className="col-span-3">
-                <CardHeader>
+              <Card className="w-full md:col-span-3">
+                <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="flex items-center gap-2">
                     <PieChartIcon className="h-5 w-5 text-muted-foreground" />
                     Répartition des tickets
@@ -1599,30 +1600,30 @@ export default function DashboardPage() {
           </TabsContent>
         </Tabs>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="w-full lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-muted-foreground" />
                 Activité SMS récente
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="overflow-hidden border rounded-lg">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         Émetteur
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         Statut
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         Type
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         Date
                       </th>
                     </tr>
@@ -1631,7 +1632,7 @@ export default function DashboardPage() {
                     {recentSmsLoading ? (
                         // Afficher un indicateur de chargement
                         <tr>
-                          <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                          <td colSpan={4} className="px-3 py-6 sm:px-6 text-center text-sm text-gray-500">
                             <div className="flex justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
@@ -1670,31 +1671,31 @@ export default function DashboardPage() {
 
                           return (
                               <tr key={sms.ref} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-3 py-3 sm:px-4 sm:py-4 whitespace-nowrap">
                                   <div className="text-sm font-medium text-gray-900">{sms.emetteur}</div>
                                   {sms.type === 'MULDESP' && (
-                                      <div className="mt-1 text-xs text-gray-500">
+                                      <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                                         {sms.dateDebutEnvoi && (
-                                            <div>Début: {format(new Date(sms.dateDebutEnvoi), 'dd/MM/yyyy HH:mm', { locale: fr })}</div>
+                                            <div className="whitespace-nowrap">Déb: {format(new Date(sms.dateDebutEnvoi), 'dd/MM HH:mm', { locale: fr })}</div>
                                         )}
                                         {sms.dateFinEnvoi && (
-                                            <div>Fin: {format(new Date(sms.dateFinEnvoi), 'dd/MM/yyyy HH:mm', { locale: fr })}</div>
+                                            <div className="whitespace-nowrap">Fin: {format(new Date(sms.dateFinEnvoi), 'dd/MM HH:mm', { locale: fr })}</div>
                                         )}
                                       </div>
                                   )}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}`}>
+                                <td className="px-2 py-3 sm:px-3 sm:py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${statusColor} whitespace-nowrap`}>
                                 {statusText}
                               </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeColor}`}>
+                                <td className="px-2 py-3 sm:px-3 sm:py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${typeColor} whitespace-nowrap`}>
                                 {typeLabel}
                               </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                  {format(new Date(sms.updatedAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                                <td className="px-2 py-3 sm:px-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                  {format(new Date(sms.updatedAt), 'dd/MM HH:mm', { locale: fr })}
                                 </td>
                               </tr>
                           );

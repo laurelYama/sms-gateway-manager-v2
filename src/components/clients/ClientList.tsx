@@ -126,19 +126,20 @@ export function ClientList({
   // Le message "Aucun client trouvé" est maintenant géré dans le composant parent
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Client</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Localisation</TableHead>
-            <TableHead>Solde</TableHead>
-            <TableHead>Coût SMS</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead className="w-[100px] text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div className="rounded-md border overflow-hidden">
+      <div className="w-full overflow-x-auto">
+        <Table className="min-w-full">
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead className="min-w-[200px]">Client</TableHead>
+              <TableHead className="min-w-[180px]">Contact</TableHead>
+              <TableHead className="min-w-[180px]">Localisation</TableHead>
+              <TableHead className="whitespace-nowrap">Solde</TableHead>
+              <TableHead className="whitespace-nowrap">Coût SMS</TableHead>
+              <TableHead className="whitespace-nowrap">Statut</TableHead>
+              <TableHead className="w-[100px] text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {paginatedClients.map((client) => (
             <TableRow key={client.idclients}>
@@ -202,31 +203,32 @@ export function ClientList({
               </TableCell>
             </TableRow>
           ))}
-        </TableBody>
-      </Table>
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-4 py-2 border-t">
-        <div className="flex items-center space-x-4">
-          <div className="text-sm text-muted-foreground">
+      <div className="flex flex-col sm:flex-row items-center justify-between px-2 sm:px-4 py-2 border-t gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="text-sm text-muted-foreground whitespace-nowrap">
             {clients.length > 0 && (
-              `${startItem}-${endItem} sur ${totalElements} clients`
+              `${startItem}-${endItem} sur ${totalElements}`
             )}
           </div>
           <Button
             onClick={exportToExcel}
             variant="ghost"
             size="sm"
-            className="flex items-center gap-1 text-sm"
+            className="h-8 px-2 text-xs sm:text-sm"
           >
-            <Download className="h-3.5 w-3.5" />
-            Exporter
+            <Download className="h-3.5 w-3.5 mr-1" />
+            <span className="hidden sm:inline">Exporter</span>
           </Button>
         </div>
 
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Lignes par page</p>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 w-full sm:w-auto">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+            <p className="text-sm font-medium whitespace-nowrap">Lignes/page</p>
             <Select
               value={`${pageSize}`}
               onValueChange={(value) => onPageSizeChange(Number(value))}
@@ -244,12 +246,13 @@ export function ClientList({
             </Select>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-1">
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => onPageChange(0)}
               disabled={currentPage === 0}
+              size="icon"
             >
               <span className="sr-only">Première page</span>
               <ChevronsLeft className="h-4 w-4" />
@@ -259,20 +262,22 @@ export function ClientList({
               className="h-8 w-8 p-0"
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 0}
+              size="icon"
             >
-              <span className="sr-only">Page précédente</span>
+              <span className="sr-only">Précédent</span>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="flex items-center justify-center text-sm font-medium w-8">
-              {currentPage + 1}
+            <div className="flex items-center justify-center text-sm font-medium w-12">
+              {currentPage + 1} / {Math.max(1, totalPages)}
             </div>
             <Button
               variant="outline"
               className="h-8 w-8 p-0"
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage >= totalPages - 1}
+              size="icon"
             >
-              <span className="sr-only">Page suivante</span>
+              <span className="sr-only">Suivant</span>
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
@@ -280,6 +285,7 @@ export function ClientList({
               className="h-8 w-8 p-0"
               onClick={() => onPageChange(totalPages - 1)}
               disabled={currentPage >= totalPages - 1}
+              size="icon"
             >
               <span className="sr-only">Dernière page</span>
               <ChevronsRight className="h-4 w-4" />

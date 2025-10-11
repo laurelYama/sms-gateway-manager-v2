@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useAuth } from "@/lib/auth"
 import { API_BASE_URL } from "@/lib/config"
-import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -533,32 +533,36 @@ export default function FacturationPage() {
     }
 
     return (
-        <div className="container mx-auto p-6 space-y-6">
-            <div className="space-y-6">
-                <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Gestion de la Facturation</h1>
-                        <p className="text-muted-foreground">Compte postpayé</p>
+        <div className="container mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+            <div className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="space-y-1 sm:space-y-2">
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestion de la Facturation</h1>
+                        <p className="text-sm sm:text-base text-muted-foreground">Compte postpayé</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <Button 
                             variant="outline" 
                             onClick={() => setShowUserInvoiceDialog(true)}
                             className="whitespace-nowrap"
+                            disabled={loading}
                         >
-                            Générer une facture
+                            <Download className="mr-2 h-4 w-4" />
+                            {loading ? 'Chargement...' : 'Générer une facture'}
                         </Button>
-                        <CalendrierButton 
-                            calendrier={calendrier || []}
-                            selectedYear={selectedYear}
-                            onYearChange={handleYearChange}
-                            loading={loading}
-                            availableYears={availableYears}
-                        />
+                        <div className="w-full sm:w-auto">
+                            <CalendrierButton 
+                                calendrier={calendrier || []}
+                                selectedYear={selectedYear}
+                                onYearChange={handleYearChange}
+                                loading={loading}
+                                availableYears={availableYears}
+                            />
+                        </div>
                     </div>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                     <FacturationActions 
                         onGenerate={() => setGenerationDialogOpen(true)}
                         onDownloadAll={handleDownloadAll}
@@ -575,24 +579,24 @@ export default function FacturationPage() {
                         sending={sending}
                     />
                     
-                    {/* Pagination */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-4 border-t">
-                        <div className="text-sm text-muted-foreground">
+                    {/* Pagination améliorée */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-3 px-2 sm:px-4 border-t">
+                        <div className="text-sm text-muted-foreground whitespace-nowrap">
                             {totalElements > 0 ? (
-                                `${(currentPage * pageSize) + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} sur ${totalElements} facture(s)`
+                                `${(currentPage * pageSize) + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} sur ${totalElements}`
                             ) : (
-                                'Aucune facture trouvée'
+                                'Aucune facture'
                             )}
                         </div>
 
-                        <div className="flex items-center space-x-6 lg:space-x-8">
-                            <div className="flex items-center space-x-2">
-                                <p className="text-sm font-medium">Lignes par page</p>
+                        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                            <div className="flex items-center justify-between w-full sm:w-auto gap-2">
+                                <p className="text-sm font-medium whitespace-nowrap">Lignes/page</p>
                                 <Select
                                     value={`${pageSize}`}
                                     onValueChange={(value) => {
                                         setPageSize(Number(value));
-                                        setCurrentPage(0); // Reset à la première page lors du changement de taille
+                                        setCurrentPage(0);
                                     }}
                                 >
                                     <SelectTrigger className="h-8 w-[70px]">
@@ -608,12 +612,13 @@ export default function FacturationPage() {
                                 </Select>
                             </div>
                             
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center justify-between w-full sm:w-auto gap-1">
                                 <Button
                                     variant="outline"
                                     className="h-8 w-8 p-0"
                                     onClick={() => setCurrentPage(0)}
                                     disabled={currentPage === 0}
+                                    size="icon"
                                 >
                                     <span className="sr-only">Première page</span>
                                     <ChevronsLeft className="h-4 w-4" />
@@ -621,22 +626,24 @@ export default function FacturationPage() {
                                 <Button
                                     variant="outline"
                                     className="h-8 w-8 p-0"
-                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 0))}
+                                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
                                     disabled={currentPage === 0}
+                                    size="icon"
                                 >
-                                    <span className="sr-only">Page précédente</span>
+                                    <span className="sr-only">Précédent</span>
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                                <div className="flex items-center justify-center text-sm font-medium w-8">
-                                    {currentPage + 1}
+                                <div className="flex items-center justify-center text-sm font-medium w-12">
+                                    {currentPage + 1} / {Math.max(1, totalPages)}
                                 </div>
                                 <Button
                                     variant="outline"
                                     className="h-8 w-8 p-0"
-                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))}
+                                    onClick={() => setCurrentPage(p => p + 1)}
                                     disabled={currentPage >= totalPages - 1}
+                                    size="icon"
                                 >
-                                    <span className="sr-only">Page suivante</span>
+                                    <span className="sr-only">Suivant</span>
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                                 <Button
@@ -644,6 +651,7 @@ export default function FacturationPage() {
                                     className="h-8 w-8 p-0"
                                     onClick={() => setCurrentPage(totalPages - 1)}
                                     disabled={currentPage >= totalPages - 1}
+                                    size="icon"
                                 >
                                     <span className="sr-only">Dernière page</span>
                                     <ChevronsRight className="h-4 w-4" />
