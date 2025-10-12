@@ -17,8 +17,8 @@ export default function UnauthorizedPage() {
         <h1 className="text-2xl font-bold text-gray-800">Accès refusé</h1>
         
         <p className="text-gray-600">
-          Vous n'avez pas les autorisations nécessaires pour accéder à cette page.
-          Veuillez contacter votre administrateur si vous pensez qu'il s'agit d'une erreur.
+          Vous n&apos;avez pas les autorisations nécessaires pour accéder à cette page.
+          Veuillez contacter votre administrateur si vous pensez qu&apos;il s&apos;agit d&apos;une erreur.
         </p>
         
         <div className="pt-4">

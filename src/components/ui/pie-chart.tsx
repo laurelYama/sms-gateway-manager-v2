@@ -2,28 +2,20 @@
 
 import * as React from 'react'
 import { Pie as PiePrimitive, Cell } from 'recharts'
+import type { PieProps as RechartsPieProps } from 'recharts'
 import { cn } from '@/lib/utils'
 
-const Pie = React.forwardRef<
-  React.ElementRef<typeof PiePrimitive>,
-  React.ComponentPropsWithoutRef<typeof PiePrimitive> & {
-    colors?: string[]
-  }
->(({ className, colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'], ...props }, ref) => {
-  const { data, ...rest } = props
-  
+type PieProps = { className?: string; colors?: string[]; data?: unknown[]; [key: string]: unknown }
+
+function Pie({ className, colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'], data }: PieProps) {
+  const typedData: unknown[] = Array.isArray(data) ? data : []
   return (
-    <PiePrimitive
-      ref={ref}
-      className={cn('', className)}
-      {...rest}
-    >
-      {data?.map((entry: any, index: number) => (
+  <PiePrimitive className={cn('', className)} data={typedData as unknown as RechartsPieProps['data']} dataKey="value">
+      {typedData.map((_, index: number) => (
         <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
       ))}
     </PiePrimitive>
   )
-})
-Pie.displayName = 'Pie'
+}
 
 export { Pie, Cell as PieCell }

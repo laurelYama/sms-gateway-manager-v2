@@ -8,6 +8,9 @@ export interface Manager {
     numeroTelephoneManager: string;
     role: 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR';
     etat: UserStatus;
+    // optional alternate fields present in some APIs
+    statutCompte?: string;
+    status?: string;
 }
 
 export interface CreateManagerDto {

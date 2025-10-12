@@ -8,6 +8,13 @@ import { fr } from "date-fns/locale"
 import { useState, useEffect } from "react"
 import { Calendrier } from "./types"
 
+// Permissive wrapper for date-fns `format` to avoid typing mismatches between
+// installed date-fns and @types/date-fns. Cast to any-compatible signature.
+const formatFn = (date: Date | number, fmt: string, opts?: unknown) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (format as any)(date, fmt, opts);
+}
+
 // Extension de l'interface Calendrier pour inclure le statut
 interface CalendrierWithStatus extends Calendrier {
     statut?: 'BROUILLON' | 'GENEREE' | 'ENVOYEE' | 'PAYEE' | 'ANNULEE';
@@ -211,8 +218,8 @@ export function CalendrierFacturation({
                                                     {new Date(2000, item.mois - 1, 1).toLocaleString('fr-FR', { month: 'short' })}
                                                 </TableCell>
                                                 <TableCell className="px-2 py-1">
-                                                    {format(new Date(item.dateDebutConsommation), 'dd MMM', { locale: fr })} -{' '}
-                                                    {format(new Date(item.dateFinConsommation), 'dd MMM', { locale: fr })}
+                                                    {formatFn(new Date(item.dateDebutConsommation), 'dd MMM', { locale: fr })} -{' '}
+                                                    {formatFn(new Date(item.dateFinConsommation), 'dd MMM', { locale: fr })}
                                                 </TableCell>
                                             </TableRow>
                                         );

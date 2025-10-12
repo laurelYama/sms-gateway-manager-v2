@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, Lock, User as UserIcon, Phone, Mail, ReloadIcon, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Save, Lock, User as UserIcon, Phone, Mail, RotateCw, Loader2, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Loading } from '@/components/ui/loading';
 import { userService, type UserProfile } from '@/services/userService';
 import { useAuth } from '@/lib/auth';
@@ -53,7 +53,7 @@ export default function ProfilePage() {
     };
 
     fetchProfile();
-  }, [user?.id, toast]);
+  }, [user?.id, toast, refreshUserData]);
 
   const validatePassword = (password: string): { valid: boolean; message: string } => {
     if (password.length < 12) {
@@ -127,16 +127,26 @@ export default function ProfilePage() {
         }, 1000);
       }
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error changing password:', error);
-      const errorMessage = error.response?.data?.message || 
-                         error.message || 
-                         'Une erreur est survenue lors de la modification du mot de passe';
-      
-      if (error.response?.status === 400) {
+
+      // Narrow unknown error into a shaped object we can inspect without using `any`
+      const err = error as {
+        response?: { data?: { message?: string }; status?: number };
+        message?: string;
+      } | undefined;
+
+      let errorMessage = 'Une erreur est survenue lors de la modification du mot de passe';
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (typeof err?.message === 'string') {
+        errorMessage = err.message;
+      }
+
+      if (err?.response?.status === 400) {
         setShowPasswordRequirements(true);
       }
-      
+
       toast({
         title: 'Erreur',
         description: errorMessage,
@@ -160,7 +170,7 @@ export default function ProfilePage() {
           className="mt-4"
           onClick={() => window.location.reload()}
         >
-          <ReloadIcon className="mr-2 h-4 w-4" />
+          <RotateCw className="mr-2 h-4 w-4" />
           Réessayer
         </Button>
       </div>

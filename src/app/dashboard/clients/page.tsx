@@ -10,7 +10,6 @@ import { ClientList } from "@/components/clients/ClientList"
 import { ClientStats } from "@/components/clients/ClientStats"
 import { ClientForm } from "@/components/clients/ClientForm"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
     Dialog,
     DialogContent,
@@ -26,8 +25,6 @@ export default function ClientsPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [currentPage, setCurrentPage] = useState(0)
     const [pageSize, setPageSize] = useState(5)
-    const [totalPages, setTotalPages] = useState(0)
-    const [totalElements, setTotalElements] = useState(0)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
     const [villes, setVilles] = useState<ReferentielItem[]>([])
     const [secteurs, setSecteurs] = useState<ReferentielItem[]>([])
@@ -43,7 +40,7 @@ export default function ClientsPage() {
         email: "",
         nif: "",
         rccm: "",
-        pays: ""
+        indicatifPays: ""
     })
     const token = getToken()
 
@@ -98,20 +95,14 @@ export default function ClientsPage() {
             // Mettre à jour la liste complète des clients
             setClients(sortedClients)
             
-            // Calculer la pagination sur la liste complète
-            const totalElements = sortedClients.length
-            const totalPages = Math.ceil(totalElements / size)
-            
-            // Mettre à jour les états de pagination
-            setTotalPages(totalPages)
-            setTotalElements(totalElements)
+            // Note: pagination is computed from the filtered list on the client side
         } catch (error) {
             console.error("Erreur API clients:", error)
             toast.error("Impossible de charger la liste des clients")
         } finally {
             setLoading(false)
         }
-    }, [currentPage, pageSize, statusFilter, searchQuery, token])
+    }, [pageSize, statusFilter, searchQuery])
 
     const loadReferentiel = useCallback(async (category: string, setter: (data: ReferentielItem[]) => void) => {
         const currentToken = getToken()
@@ -158,7 +149,7 @@ export default function ClientsPage() {
         if (token) {
             loadInitialData()
         }
-    }, [token])
+    }, [token, loadClients, loadReferentiel])
 
     // Chargement au changement de page/taille de page
     useEffect(() => {
@@ -174,7 +165,7 @@ export default function ClientsPage() {
         }
 
         loadData()
-    }, [token, currentPage, pageSize])
+    }, [token, currentPage, pageSize, loadClients])
 
     const formatCurrency = useCallback((amount: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -326,7 +317,8 @@ export default function ClientsPage() {
         setCurrentClient(null);
     };
 
-    const toggleClientStatus = async (client: Client, newStatus: "ACTIF" | "SUSPENDU") => {
+    const toggleClientStatus = async (client: Client) => {
+        const newStatus: "ACTIF" | "SUSPENDU" = client.statutCompte === "ACTIF" ? "SUSPENDU" : "ACTIF";
         const endpoint = newStatus === "SUSPENDU" 
             ? `${API_BASE_URL}/api/V1/clients/${client.idclients}/suspend`
             : `${API_BASE_URL}/api/V1/clients/${client.idclients}/reactivate`

@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Ticket, TicketStatus } from './types'
 import { fetchTickets, updateTicket } from '@/lib/api/tickets'
-import { format, startOfMonth, isAfter, isBefore, subMonths } from 'date-fns'
+import * as dateFns from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Loader2, MessageSquare, Send, ChevronDown, ChevronUp, User, Calendar, Building, Filter, List, Eye } from 'lucide-react'
+import { Loader2, Send, ChevronUp, User, Calendar, Building, Filter, List, Eye } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/lib/auth'
 import { canUpdateTickets } from '@/lib/permissions'
@@ -30,9 +30,11 @@ export function TicketList() {
     const canPerformActions = canUpdateTickets(user)
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
     
-    // Vérifie si l'utilisateur est l'auteur du ticket
-    const isTicketAuthor = (ticket: Ticket) => {
-        return user?.email === ticket.emailAuteur
+    // Vérifie si l'utilisateur est l'auteur du ticket (kept for future use)
+    const _isTicketAuthor = (ticket: Ticket) => {
+        // some payloads use `emailClient`, others embed client info
+        const ticketEmail = ticket.emailClient || ticket.client?.email
+        return user?.email && ticketEmail ? user.email === ticketEmail : false
     }
 
     const loadTickets = async () => {
@@ -54,7 +56,7 @@ export function TicketList() {
             return [];
         }
 
-        const threeMonthsAgo = subMonths(new Date(), 3);
+    const threeMonthsAgo = dateFns.subMonths(new Date(), 3);
 
         return tickets.filter(ticket => {
             if (!ticket) return false;
@@ -66,7 +68,7 @@ export function TicketList() {
 
             try {
                 const ticketDate = new Date(ticket.createdAt);
-                return isAfter(ticketDate, threeMonthsAgo);
+                return dateFns.isAfter(ticketDate, threeMonthsAgo);
             } catch (e) {
                 console.error('Erreur de date pour le ticket:', ticket.id, e)
                 return false
@@ -103,7 +105,7 @@ export function TicketList() {
         setExpandedTickets(newExpanded)
     }
 
-    const handleReply = (ticketId: string) => {
+    const _handleReply = (ticketId: string) => {
         setReplyingTo(replyingTo === ticketId ? null : ticketId)
         if (replyingTo !== ticketId) {
             setReplyText('')
@@ -156,12 +158,14 @@ export function TicketList() {
         }
     }
 
+    const formatFn = dateFns.format as unknown as (d: Date | number, f?: string, o?: { locale?: unknown }) => string;
+
     const formatDate = (dateString: string) => {
-        return format(new Date(dateString), 'dd MMMM yyyy à HH:mm', { locale: fr })
+        return formatFn(new Date(dateString), 'dd MMMM yyyy à HH:mm', { locale: fr })
     }
 
     const formatShortDate = (dateString: string) => {
-        return format(new Date(dateString), 'dd/MM/yy HH:mm', { locale: fr })
+        return formatFn(new Date(dateString), 'dd/MM/yy HH:mm', { locale: fr })
     }
 
     useEffect(() => {

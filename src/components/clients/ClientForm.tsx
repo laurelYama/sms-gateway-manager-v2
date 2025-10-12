@@ -68,7 +68,8 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
       rccm: initialData.rccm || "",
       emetteur: initialData.emetteur || "",
       coutSmsTtc: initialData.coutSmsTtc || 25,
-      typeCompte: mode === 'edit' ? initialData.typeCompte : (initialData.typeCompte || "POSTPAYE"),
+  // Ensure typeCompte is always a string (CreateClientForm requires it)
+  typeCompte: (initialData.typeCompte ?? "POSTPAYE") as 'POSTPAYE' | 'PREPAYE' | string,
       indicatifPays: indicatifPays || (paysParDefaut?.value1 || ""),
       telephoneAvecIndicatif: telephoneAvecIndicatif || ""
     };
@@ -463,7 +464,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               <Select
                 value={formData.typeCompte}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, typeCompte: value as any })
+                  setFormData({ ...formData, typeCompte: value as 'POSTPAYE' | 'PREPAYE' })
                 }
               >
                 <SelectTrigger>

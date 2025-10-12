@@ -5,14 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { useCallback, useEffect, useState, useMemo } from 'react'
 import { getToken } from '@/lib/auth'
 import { useAuth } from '@/lib/auth'
@@ -34,11 +30,12 @@ import {
 // Utilisation directe de Bar de recharts au lieu du composant personnalisé
 import { Pie as RechartsPie, Cell } from 'recharts'
 import {
-  MessageSquare, Ticket, Users, CreditCard,
+  MessageSquare, Ticket as TicketIcon, Users, CreditCard,
   AlertCircle, CheckCircle, Clock, RefreshCw, RotateCw, Mail,
   Smartphone, UserCheck, HelpCircle, BarChart2, PieChart as PieChartIcon,
   Activity, ArrowUpRight, ArrowDownRight, Search, Filter, Calendar, Download
 } from 'lucide-react'
+import type { Ticket as TicketType } from '@/components/tickets/types'
 import { cn } from '@/lib/utils'
 import { TicketStatus } from '@/components/tickets/types'
 import { MetricsCard } from '@/components/dashboard/metrics-card'
@@ -71,7 +68,7 @@ const mockClientData = [
 
 export default function DashboardPage() {
   const { token, loading: authLoading } = useAuth()
-  const [tickets, setTickets] = useState([])
+  const [tickets, setTickets] = useState<TicketType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState('7days')
@@ -120,7 +117,7 @@ export default function DashboardPage() {
     previous: 0,
     trend: 0,
     progress: 0,
-    monthlyData: undefined
+    // yearlyData can be added later by fetchYearlySmsStats
   });
   const [recentSms, setRecentSms] = useState<Array<{
     ref: string;
@@ -135,7 +132,7 @@ export default function DashboardPage() {
   const [recentSmsLoading, setRecentSmsLoading] = useState<boolean>(true);
 
   // Fonction pour calculer la progression des SMS
-  const calculateSmsProgress = (smsList: any[]) => {
+  const calculateSmsProgress = (smsList: unknown[]) => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -145,25 +142,22 @@ export default function DashboardPage() {
     let currentMonthCount = 0;
     let lastMonthCount = 0;
 
-    smsList.forEach(sms => {
-      // On ne compte que les SMS avec statut 'ENVOYE' et une date de mise à jour valide
-      try {
-        const smsDate = new Date(sms.updatedAt);
-        const smsMonth = smsDate.getMonth();
-        const smsYear = smsDate.getFullYear();
+    for (const item of smsList || []) {
+      if (!item || typeof item !== 'object') continue;
+      const s = item as Record<string, unknown>;
 
-        // Vérification des dates pour le décompte
-        if (smsYear === currentYear && smsMonth === currentMonth) {
-          currentMonthCount++;
-        } else if ((smsYear === lastMonthYear && smsMonth === lastMonth) ||
-            (currentMonth === 0 && smsMonth === 11 && smsYear === currentYear - 1)) {
-          lastMonthCount++;
-        }
-      } catch (error) {
-        console.error('Erreur lors du traitement de la date du SMS:', sms.updatedAt, error);
-      }
-    });
+      const dateRaw = s.updatedAt ?? s.createdAt;
+      if (!dateRaw) continue;
 
+      const date = new Date(String(dateRaw));
+      if (isNaN(date.getTime())) continue;
+
+      const m = date.getMonth();
+      const y = date.getFullYear();
+
+      if (m === currentMonth && y === currentYear) currentMonthCount++;
+      if (m === lastMonth && y === lastMonthYear) lastMonthCount++;
+    }
 
     // Calcul de la tendance
     let trend = 0;
@@ -264,7 +258,11 @@ export default function DashboardPage() {
         return 0;
       }
 
-      const activeCount = clients.filter((client: any) => client.statutCompte === 'ACTIF').length;
+      const activeCount = clients.filter((client: unknown) => {
+        if (!client || typeof client !== 'object') return false;
+        const c = client as { statutCompte?: unknown };
+        return c.statutCompte === 'ACTIF';
+      }).length;
       setActiveClients(activeCount);
       return activeCount;
 
@@ -337,12 +335,14 @@ export default function DashboardPage() {
       const currentYear = now.getFullYear();
 
       // Compter les SMS du mois en cours
-      const currentCount = allSms.filter((sms: any) => {
-        if (!sms.updatedAt) return false;
-        const smsDate = new Date(sms.updatedAt);
+      const currentCount = allSms.filter((sms: unknown) => {
+        if (!sms || typeof sms !== 'object') return false;
+        const s = sms as { updatedAt?: unknown; statut?: unknown };
+        if (typeof s.updatedAt !== 'string') return false;
+        const smsDate = new Date(s.updatedAt);
         return smsDate.getMonth() === currentMonth &&
             smsDate.getFullYear() === currentYear &&
-            sms.statut === 'ENVOYE';
+            s.statut === 'ENVOYE';
       }).length;
 
       // Calculer le mois précédent (en gérant le passage d'année)
@@ -354,14 +354,15 @@ export default function DashboardPage() {
       }
 
       // Compter les SMS du mois précédent
-      const previousCount = allSms.filter((sms: any) => {
-        if (!sms.updatedAt) return false;
-        const smsDate = new Date(sms.updatedAt);
+      const previousCount = allSms.filter((sms: unknown) => {
+        if (!sms || typeof sms !== 'object') return false;
+        const s = sms as { updatedAt?: unknown; statut?: unknown };
+        if (typeof s.updatedAt !== 'string') return false;
+        const smsDate = new Date(s.updatedAt);
         return smsDate.getMonth() === previousMonth &&
             smsDate.getFullYear() === previousYear &&
-            sms.statut === 'ENVOYE';
+            s.statut === 'ENVOYE';
       }).length;
-
 
       // Mettre à jour le compteur de SMS du mois en cours
       setSentSmsCount(currentCount);
@@ -369,7 +370,6 @@ export default function DashboardPage() {
       // Calculer et mettre à jour la tendance
       const trend = calculateSmsTrend(currentCount, previousCount);
       setSmsTrend(trend);
-
 
       // Mettre à jour les statistiques SMS
       setSmsStats({
@@ -381,7 +381,6 @@ export default function DashboardPage() {
 
       // Retourner les données pour une utilisation ultérieure
       return { currentMonthCount: currentCount, previousMonthCount: previousCount };
-
     } catch (error) {
       console.error('Erreur lors du chargement des SMS:', error);
       setSentSmsCount(0);
@@ -395,8 +394,8 @@ export default function DashboardPage() {
   const fetchOpenTickets = useCallback(async () => {
     try {
       if (!token) {
-        console.error('Aucun token disponible')
-        return
+        console.error('Aucun token disponible');
+        return;
       }
 
       const response = await fetch(`${API_BASE_URL}/api/V1/tickets`, {
@@ -406,32 +405,35 @@ export default function DashboardPage() {
           'Content-Type': 'application/json'
         },
         credentials: 'include'
-      })
-
+      });
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('Erreur lors du chargement des tickets:', response.status, errorText)
-        throw new Error(`Erreur ${response.status}: ${errorText}`)
+        const errorText = await response.text();
+        console.error('Erreur lors du chargement des tickets:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
       }
 
-      const ticketsData = await response.json()
+      const ticketsData = await response.json();
 
       // Filtrer les tickets ouverts
       if (Array.isArray(ticketsData)) {
-        const openTickets = ticketsData.filter((ticket: any) => ticket.statut === 'OUVERT')
-        setOpenTicketsCount(openTickets.length)
+        const openTickets = ticketsData.filter((ticket: unknown) => {
+          if (!ticket || typeof ticket !== 'object') return false;
+          const t = ticket as { statut?: unknown };
+          return t.statut === 'OUVERT';
+        });
+        setOpenTicketsCount(openTickets.length);
       } else {
-        console.error('La réponse des tickets n\'est pas un tableau:', ticketsData)
-        setOpenTicketsCount(0)
+        console.error('La réponse des tickets n\'est pas un tableau:', ticketsData);
+        setOpenTicketsCount(0);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des tickets ouverts:', error)
-      setOpenTicketsCount(0)
+      console.error('Erreur lors du chargement des tickets ouverts:', error);
+      setOpenTicketsCount(0);
     } finally {
-      setTicketsLoading(false)
+      setTicketsLoading(false);
     }
-  }, [token])
+  }, [token]);
 
   // Fonction pour charger les tickets
   const fetchTickets = useCallback(async () => {
@@ -524,10 +526,12 @@ export default function DashboardPage() {
 
       const allSms = await response.json();
 
-      const yearlyStats = allSms.reduce((acc: {[key: number]: number}, sms: any) => {
-        if (!sms.updatedAt) return acc;
+      const yearlyStats = allSms.reduce((acc: {[key: number]: number}, sms: unknown) => {
+        if (!sms || typeof sms !== 'object') return acc;
+        const s = sms as { updatedAt?: unknown };
+        if (typeof s.updatedAt !== 'string') return acc;
 
-        const date = new Date(sms.updatedAt);
+        const date = new Date(s.updatedAt);
         const year = date.getFullYear();
 
         if (!acc[year]) {
@@ -602,14 +606,14 @@ export default function DashboardPage() {
   }, [token])
 
   // Statistiques des tickets
-  const [ticketStats, setTicketStats] = useState({
+  const [ticketStats, setTicketStats] = useState<Record<'OUVERT'|'EN_COURS'|'FERME', number>>({
     OUVERT: 0,
     EN_COURS: 0,
     FERME: 0
   })
 
   // Couleurs pour les différents statuts
-  const statusColors = {
+  const statusColors: Record<'OUVERT'|'EN_COURS'|'FERME', string> = {
     OUVERT: '#F59E0B', // Jaune
     EN_COURS: '#3B82F6', // Bleu
     FERME: '#10B981' // Vert
@@ -645,24 +649,34 @@ export default function DashboardPage() {
         fetchYearlySmsStats()
       ]);
 
-      // Mettre à jour les états avec les données chargées
-      setActiveClientsCount(Array.isArray(clientsData) ? clientsData.length : 0);
-      setBillingData(Array.isArray(billingData) ? billingData : []);
-      setRecentSms(Array.isArray(recentSmsData) ? recentSmsData : []);
-      setYearlySmsStats(yearlyStats || []);
+  // Mettre à jour les états avec les données chargées
+  setActiveClients(Array.isArray(clientsData) ? clientsData.length : 0);
+  setBillingData(Array.isArray(billingData) ? billingData : []);
+  setRecentSms(Array.isArray(recentSmsData) ? recentSmsData : []);
+  // yearly stats will be set inside smsStats via setSmsStats
+  // setSmsStats will be updated below when appropriate
 
       // Mettre à jour les états
       if (Array.isArray(ticketsData)) {
-        setTickets(ticketsData);
-        const openTickets = ticketsData.filter(ticket =>
-            ticket.statut === 'OUVERT' || ticket.statut === 'EN_COURS'
-        ).length;
+        setTickets(ticketsData as TicketType[]);
+    const openTickets = (ticketsData as TicketType[]).filter(ticket =>
+      ticket && (ticket.statut === 'OUVERT' || ticket.statut === 'EN_COURS')
+    ).length;
         setOpenTicketsCount(openTickets);
       }
 
       // Mettre à jour les SMS récents
       if (Array.isArray(recentSmsData)) {
-        setRecentSms(recentSmsData);
+        setRecentSms(recentSmsData as Array<{
+          ref: string;
+          type: string;
+          destinataire: string;
+          emetteur: string;
+          statut: string;
+          dateDebutEnvoi?: string | null;
+          dateFinEnvoi?: string | null;
+          updatedAt: string;
+        }>);
       }
 
       // Mettre à jour les compteurs avec des valeurs par défaut si nécessaire
@@ -702,8 +716,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (authLoading) return;
     
-    let isMounted = true;
-    let refreshInterval: NodeJS.Timeout;
+  let isMounted = true;
     
     const loadInitialData = async () => {
       if (!isMounted) return;
@@ -784,33 +797,28 @@ export default function DashboardPage() {
     };
 
     
-    loadInitialData();
-    
-    // Nettoyage
-    return () => {
-      // Annuler les requêtes en cours si nécessaire
-      isMounted = false;
-      if (refreshInterval) clearInterval(refreshInterval);
-    };
-    
     // Charger les données immédiatement
     loadInitialData();
-    
+
     // Configurer le rafraîchissement automatique toutes les 30 secondes
-    refreshInterval = setInterval(loadInitialData, 30000);
-    
+    const refreshInterval = setInterval(loadInitialData, 30000);
+
+    // Nettoyage unique
     return () => {
-      if (refreshInterval) clearInterval(refreshInterval);
+      isMounted = false;
+      clearInterval(refreshInterval);
     };
   }, [token, fetchTickets, fetchSentSmsCount, fetchPendingSms, fetchActiveClients, fetchBillingData, fetchRecentSms, fetchYearlySmsStats, authLoading]);
 
   // Mettre à jour les statistiques des tickets
   useEffect(() => {
     if (tickets.length > 0) {
-      const stats = tickets.reduce((acc, ticket) => {
-        acc[ticket.statut] = (acc[ticket.statut] || 0) + 1;
+      const stats = (tickets as TicketType[]).reduce((acc, ticket) => {
+        if (ticket.statut === 'TOUS') return acc;
+        const key = ticket.statut as 'OUVERT' | 'EN_COURS' | 'FERME';
+        acc[key] = (acc[key] || 0) + 1;
         return acc;
-      }, { OUVERT: 0, EN_COURS: 0, FERME: 0 });
+      }, { OUVERT: 0, EN_COURS: 0, FERME: 0 } as Record<'OUVERT'|'EN_COURS'|'FERME', number>);
 
       setTicketStats(stats);
     } else {
@@ -820,12 +828,12 @@ export default function DashboardPage() {
 
   // Données pour le graphique circulaire
   const ticketData = useMemo(() => {
-    const data = Object.entries(ticketStats)
+      const data = Object.entries(ticketStats)
       .filter(([_, value]) => value > 0) // Ne garder que les statuts avec au moins un ticket
       .map(([name, value]) => ({
         name: name.charAt(0) + name.slice(1).toLowerCase(), // Mettre en forme le nom
         value,
-        color: statusColors[name] || '#9CA3AF' // Couleur par défaut gris
+        color: statusColors[name as 'OUVERT'|'EN_COURS'|'FERME'] || '#9CA3AF' // Couleur par défaut gris
       }));
     
     return data;
@@ -842,7 +850,7 @@ export default function DashboardPage() {
 
   // Derniers tickets
   const recentTickets = [...tickets]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5)
 
   // État pour stocker les données des SMS
@@ -977,21 +985,31 @@ export default function DashboardPage() {
             lastActivity: string
           }> = {}
 
-          smsList.forEach((sms: any) => {
-            if (!clientActivity[sms.clientId]) {
-              clientActivity[sms.clientId] = {
-                clientId: sms.clientId,
-                emetteur: sms.emetteur || 'Inconnu',
+          smsList.forEach((sms: unknown) => {
+            if (!sms || typeof sms !== 'object') return;
+            const s = sms as Record<string, unknown>;
+
+            const clientId = typeof s.clientId === 'string' ? s.clientId : String(s.clientId ?? 'unknown');
+            const emetteur = typeof s.emetteur === 'string' && s.emetteur ? String(s.emetteur) : 'Inconnu';
+            const lastActivity = String(s.updatedAt ?? s.createdAt ?? new Date().toISOString());
+
+            if (!clientActivity[clientId]) {
+              clientActivity[clientId] = {
+                clientId,
+                emetteur,
                 count: 0,
-                lastActivity: sms.updatedAt || sms.createdAt || new Date().toISOString()
+                lastActivity
               }
             }
-            clientActivity[sms.clientId].count++
+            clientActivity[clientId].count++;
 
             // Mettre à jour la dernière activité si plus récente
-            const smsDate = sms.updatedAt || sms.createdAt
-            if (smsDate && smsDate > clientActivity[sms.clientId].lastActivity) {
-              clientActivity[sms.clientId].lastActivity = smsDate
+            const smsDateRaw = s.updatedAt ?? s.createdAt;
+            if (smsDateRaw) {
+              const smsDateStr = String(smsDateRaw);
+              if (smsDateStr > clientActivity[clientId].lastActivity) {
+                clientActivity[clientId].lastActivity = smsDateStr;
+              }
             }
           })
 
@@ -1114,10 +1132,11 @@ export default function DashboardPage() {
           const dateCounts: Record<string, { sent: number; pending: number }> = {};
 
           // Fonction pour traiter les SMS (envoyés ou en attente)
-          const processSmsList = (smsList: any[], isPending: boolean) => {
-            (smsList || []).forEach((sms: any) => {
-              // Pour les SMS en attente, utiliser updatedAt comme date de référence
-              const date = formatSmsDate(isPending ? sms.updatedAt : (sms.createdAt || sms.updatedAt));
+          const processSmsList = (smsList: unknown[], isPending: boolean) => {
+            (smsList || []).forEach((sms: unknown) => {
+              if (!sms || typeof sms !== 'object') return;
+              const s = sms as { updatedAt?: unknown; createdAt?: unknown };
+              const date = formatSmsDate(isPending ? String(s.updatedAt) : (String(s.createdAt || s.updatedAt)));
 
               if (!dateCounts[date]) {
                 dateCounts[date] = { sent: 0, pending: 0 };
@@ -1278,7 +1297,7 @@ export default function DashboardPage() {
               title="Tickets ouverts"
               value={ticketsLoading ? "-" : openTicketsCount.toString()}
               description="en attente de traitement"
-              icon={<Ticket className="h-5 w-5 text-primary" />}
+              icon={<TicketIcon className="h-5 w-5 text-primary" />}
               tooltip={`${openTicketsCount} tickets ouverts nécessitant une attention`}
           />
           <MetricsCard
@@ -1309,7 +1328,7 @@ export default function DashboardPage() {
             <TabsList>
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Vue d'ensemble
+                Vue d&apos;ensemble
               </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart2 className="h-4 w-4" />
@@ -1450,21 +1469,23 @@ export default function DashboardPage() {
                             paddingAngle={2}
                             dataKey="value"
                             label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
                             fill="#8884d8"
                             style={{
                               fontSize: '12px',
                               fontWeight: '500',
                             }}
                           >
-                            {ticketData.map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={statusColors[entry.name.toUpperCase()] || COLORS[index % COLORS.length]} 
-                                stroke="#fff"
-                                strokeWidth={1}
-                              />
-                            ))}
+                            {ticketData.map((entry, index) => {
+                              const key = entry.name.toUpperCase() as 'OUVERT' | 'EN_COURS' | 'FERME';
+                              return (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={statusColors[key] || COLORS[index % COLORS.length]} 
+                                  stroke="#fff"
+                                  strokeWidth={1}
+                                />
+                              )
+                            })}
                           </RechartsPie>
                           <Legend 
                             layout="horizontal"
@@ -1675,12 +1696,12 @@ export default function DashboardPage() {
                                   <div className="text-sm font-medium text-gray-900">{sms.emetteur}</div>
                                   {sms.type === 'MULDESP' && (
                                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
-                                        {sms.dateDebutEnvoi && (
-                                            <div className="whitespace-nowrap">Déb: {format(new Date(sms.dateDebutEnvoi), 'dd/MM HH:mm', { locale: fr })}</div>
-                                        )}
-                                        {sms.dateFinEnvoi && (
-                                            <div className="whitespace-nowrap">Fin: {format(new Date(sms.dateFinEnvoi), 'dd/MM HH:mm', { locale: fr })}</div>
-                                        )}
+                    {sms.dateDebutEnvoi && (
+                      <div className="whitespace-nowrap">Déb: {new Date(sms.dateDebutEnvoi).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    )}
+                    {sms.dateFinEnvoi && (
+                      <div className="whitespace-nowrap">Fin: {new Date(sms.dateFinEnvoi).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    )}
                                       </div>
                                   )}
                                 </td>
@@ -1695,7 +1716,7 @@ export default function DashboardPage() {
                               </span>
                                 </td>
                                 <td className="px-2 py-3 sm:px-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                                  {format(new Date(sms.updatedAt), 'dd/MM HH:mm', { locale: fr })}
+                                  {new Date(sms.updatedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                 </td>
                               </tr>
                           );
@@ -1778,12 +1799,12 @@ export default function DashboardPage() {
                             <span className="text-muted-foreground"> {billingData[0].mois}/{billingData[0].exercice.annee}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Du {format(new Date(billingData[0].dateDebutConsommation), 'd MMMM yyyy', { locale: fr })}
+                            Du {new Date(billingData[0].dateDebutConsommation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                             {' au '}
-                            {format(new Date(billingData[0].dateFinConsommation), 'd MMMM yyyy', { locale: fr })}
+                            {new Date(billingData[0].dateFinConsommation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Date de génération: {format(new Date(billingData[0].dateGenerationFacture), 'd MMMM yyyy', { locale: fr })}
+                            Date de génération: {new Date(billingData[0].dateGenerationFacture).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </p>
                         </div>
                       </div>

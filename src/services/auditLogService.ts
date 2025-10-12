@@ -12,6 +12,10 @@ export interface AuditLog {
   timestamp: string;
   ipAddress: string;
   userAgent: string;
+  // Optional details payload (may be an object or a string depending on API)
+  details?: Record<string, unknown> | string | null;
+  // Optional short description provided by the API
+  description?: string | null;
 }
 
 export interface DateRangeParams {
@@ -43,7 +47,8 @@ export const auditLogService = {
         throw new Error(errorData.message || `Erreur ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+  const data = await response.json();
+  return data as AuditLog[];
     } catch (error) {
       console.error('Erreur lors de la récupération des logs:', error);
       throw error;
@@ -78,7 +83,8 @@ export const auditLogService = {
         throw new Error(errorData.message || `Erreur ${response.status}: Échec de la récupération des journaux par date`);
       }
 
-      return await response.json();
+  const data = await response.json();
+  return data as AuditLog[];
     } catch (error) {
       console.error('Erreur lors de la récupération des logs par date:', error);
       throw error;
@@ -111,7 +117,8 @@ export const auditLogService = {
         throw new Error(errorData.message || `Erreur ${response.status}: Échec de la récupération des journaux par utilisateur`);
       }
 
-      return await response.json();
+  const data = await response.json();
+  return data as AuditLog[];
     } catch (error) {
       console.error('Erreur lors de la récupération des logs par utilisateur:', error);
       throw error;

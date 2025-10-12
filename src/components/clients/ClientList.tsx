@@ -55,7 +55,7 @@ export function ClientList({
     const wb = XLSX.utils.book_new();
 
     // Préparer les données pour l'export
-    const data = [
+    const data: (string | number)[][] = [
       ['Raison sociale', 'Secteur', 'Email', 'Téléphone', 'Ville', 'Adresse', 'Solde', 'Type de compte', 'Statut', 'Coût unitaire SMS', 'Coût total SMS']
     ];
 

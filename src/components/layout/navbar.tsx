@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -12,8 +12,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Settings, User } from "lucide-react"
-import { getUserData, clearToken, isValidToken, isTokenExpired, decodeToken, getToken } from "@/lib/auth"
+import { LogOut, User } from "lucide-react"
+import { getUserData, clearToken, isValidToken, decodeToken, getToken } from "@/lib/auth"
 
 // Clé pour le stockage des données utilisateur dans le localStorage
 const USER_DATA_KEY = "userData";
@@ -33,74 +33,72 @@ export function Navbar() {
     const router = useRouter()
     const pathname = usePathname()
 
-    useEffect(() => {
-        // Vérifier immédiatement l'état d'authentification
-        checkAuthStatus()
-        
-        // Vérifier périodiquement la validité du token (toutes les minutes)
-        const interval = setInterval(checkAuthStatus, 60000)
-        
-        // Forcer une mise à jour des données utilisateur après un court délai
-        const updateUserData = () => {
+        const checkAuthStatus = useCallback(() => {
             const token = getToken();
-            if (token) {
-                const decoded = decodeToken(token);
-                if (decoded) {
-                    setUserData(decoded);
-                }
+        
+            if (!token || !isValidToken()) {
+                handleLogout();
+                return;
             }
-        };
+
+            // D'abord essayer de décoder le token pour avoir les données les plus à jour
+            try {
+                const decodedUser = decodeToken(token);
+                if (decodedUser) {
+                    setUserData(decodedUser);
+                    // Mettre à jour le stockage local pour la cohérence
+                    localStorage.setItem(USER_DATA_KEY, JSON.stringify(decodedUser));
+                    return;
+                }
+            } catch (error) {
+                console.error('Erreur d\'authentification');
+            }
+
+            const storedUserData = getUserData();
+            if (storedUserData) {
+                setUserData(storedUserData);
+            } else {
+                handleLogout();
+            }
+        }, [])
+
+        useEffect(() => {
+            // Vérifier immédiatement l'état d'authentification
+            checkAuthStatus()
         
-        const timeoutId = setTimeout(updateUserData, 1000);
+            // Vérifier périodiquement la validité du token (toutes les minutes)
+            const interval = setInterval(checkAuthStatus, 60000)
         
-        return () => {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-        };
-    }, [])
+            const updateUserData = () => {
+                const token = getToken();
+                if (token) {
+                    const decoded = decodeToken(token);
+                    if (decoded) {
+                        setUserData(decoded);
+                    }
+                }
+            };
+        
+            const timeoutId = setTimeout(updateUserData, 1000);
+        
+            return () => {
+                clearInterval(interval);
+                clearTimeout(timeoutId);
+            };
+        }, [checkAuthStatus])
     
     // Mise à jour des données utilisateur
     useEffect(() => {
         // Logs de débogage désactivés
     }, [userData])
 
-    const checkAuthStatus = () => {
-        const token = getToken();
-        
-        if (!token || !isValidToken(token)) {
-            handleLogout();
-            return;
-        }
+    // Duplicate checkAuthStatus removed; using the useCallback version above.
 
-        // D'abord essayer de décoder le token pour avoir les données les plus à jour
-        try {
-            const decodedUser = decodeToken(token);
-            if (decodedUser) {
-                setUserData(decodedUser);
-                // Mettre à jour le stockage local pour la cohérence
-                localStorage.setItem(USER_DATA_KEY, JSON.stringify(decodedUser));
-                return;
-            }
-        } catch (error) {
-            console.error('Erreur d\'authentification');
-        }
-
-        // Si le décodage échoue, essayer de récupérer depuis le stockage local
-        const storedUserData = getUserData();
-        if (storedUserData) {
-            setUserData(storedUserData);
-        } else {
-            handleLogout();
-        }
-        
-        console.groupEnd();
-    }
-
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         clearToken()
         // Rediriger vers la page de connexion avec un paramètre pour éviter la boucle de redirection
         router.push(`/login?from=${encodeURIComponent(pathname)}`)
-    }
+    }, [router, pathname])
 
     const getInitials = (name: string) => {
         if (!name) return "US"
@@ -112,44 +110,39 @@ export function Navbar() {
             .slice(0, 2)
     }
 
-    const getRoleDisplay = (role: any) => {
+    const getRoleDisplay = (role: unknown) => {
         if (!role) return 'Utilisateur';
-        
-        // Si le rôle est un objet, essayer d'extraire la propriété 'role' ou 'authority'
-        let roleValue = role;
-        if (typeof role === 'object' && role !== null) {
-            roleValue = role.role || role.authority || role;
+
+        // narrow role to possible shapes: string | { role?: string } | array
+        let roleValue: unknown = role;
+        if (typeof roleValue === 'object' && roleValue !== null) {
+            // try common properties
+            const rv = roleValue as { role?: unknown; authority?: unknown };
+            if (rv.role) roleValue = rv.role;
+            else if (rv.authority) roleValue = rv.authority;
         }
-        
-        // Si c'est un tableau, prendre le premier élément
+
         if (Array.isArray(roleValue)) {
             roleValue = roleValue[0];
         }
-        
-        // Convertir en chaîne et nettoyer
-        const roleStr = String(roleValue).trim().toUpperCase();
-        
-        const roles: { [key: string]: string } = {
+
+        const roleStr = String(roleValue ?? '').trim().toUpperCase();
+
+        const roles: Record<string, string> = {
             'ADMIN': 'Administrateur',
             'SUPER_ADMIN': 'Super Administrateur',
             'ROLE_SUPER_ADMIN': 'Super Administrateur',
             'ROLE_ADMIN': 'Administrateur',
             'ROLE_USER': 'Utilisateur'
         };
-        
-        // Vérifier les correspondances exactes d'abord
-        if (roles[roleStr]) {
-            return roles[roleStr];
-        }
-        
-        // Vérifier les correspondances partielles
+
+        if (roles[roleStr]) return roles[roleStr];
+
         for (const [key, value] of Object.entries(roles)) {
-            if (roleStr.includes(key) || key.includes(roleStr)) {
-                return value;
-            }
+            if (roleStr.includes(key) || key.includes(roleStr)) return value;
         }
-        
-        return roleStr;
+
+        return roleStr || 'Utilisateur';
     }
 
 

@@ -19,6 +19,8 @@ export interface Client {
 export interface CreditRequest {
     id: string
     clientId: string
+    // Optional request code used in UI
+    requestCode?: string
     client?: Client
     quantity: number
     status: "PENDING" | "APPROVED" | "REJECTED"

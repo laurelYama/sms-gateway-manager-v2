@@ -12,8 +12,8 @@ const actionTypes = {
   DISMISS_TOAST: 'DISMISS_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
 } as const;
-
-type ActionType = typeof actionTypes;
+// runtime no-op reference to satisfy eslint when actionTypes is used only as a type
+void actionTypes;
 
 let count = 0;
 

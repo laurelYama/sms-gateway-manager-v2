@@ -4,16 +4,10 @@ import * as React from 'react'
 import { Bar as BarPrimitive } from 'recharts'
 import { cn } from '@/lib/utils'
 
-const Bar = React.forwardRef<
-  React.ElementRef<typeof BarPrimitive>,
-  React.ComponentPropsWithoutRef<typeof BarPrimitive>
->(({ className, ...props }, ref) => (
-  <BarPrimitive
-    ref={ref}
-    className={cn('fill-primary', className)}
-    {...props}
-  />
-))
-Bar.displayName = 'Bar'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function Bar(props: any) {
+  const { className, ...rest } = props
+  return <BarPrimitive className={cn('fill-primary', className)} {...rest} />
+}
 
 export { Bar }

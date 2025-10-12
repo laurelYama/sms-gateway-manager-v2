@@ -1,39 +1,37 @@
-import { User } from '@/lib/auth';
+import { UserToken } from '@/types';
 
-type Role = 'ADMIN' | 'SUPER_ADMIN' | 'AUDITEUR';
-
-export const canEdit = (user: User | null): boolean => {
+export const canEdit = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };
 
-export const canDelete = (user: User | null): boolean => {
+export const canDelete = (user: UserToken | null): boolean => {
   return user?.role === 'SUPER_ADMIN';
 };
 
-export const canCreate = (user: User | null): boolean => {
+export const canCreate = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };
 
-export const canSuspend = (user: User | null): boolean => {
+export const canSuspend = (user: UserToken | null): boolean => {
   return user?.role === 'SUPER_ADMIN';
 };
 
-export const canManageUsers = (user: User | null): boolean => {
+export const canManageUsers = (user: UserToken | null): boolean => {
   return user?.role === 'SUPER_ADMIN';
 };
 
-export const canApprove = (user: User | null): boolean => {
+export const canApprove = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };
 
-export const canReject = (user: User | null): boolean => {
+export const canReject = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };
 
-export const canCreateTickets = (user: User | null): boolean => {
+export const canCreateTickets = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };
 
-export const canUpdateTickets = (user: User | null): boolean => {
+export const canUpdateTickets = (user: UserToken | null): boolean => {
   return user?.role !== 'AUDITEUR';
 };

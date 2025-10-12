@@ -2,43 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { API_BASE_URL } from "@/lib/config"
+import { toast } from 'sonner'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Clock, XCircle, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { XCircle, RefreshCw } from "lucide-react"
 import { getToken } from "@/lib/auth"
 import { CreditList } from "@/components/credits/CreditList"
 import { CreditFilters } from "@/components/credits/CreditFilters"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+// Removed unused Input/Label imports to reduce build lint warnings
 import { RejectCreditDialog } from "@/components/credits/RejectCreditDialog"
 
-interface CreditRequest {
-    requestCode: number
-    clientId: string
-    quantity: number
-    status: "PENDING" | "APPROVED" | "REJECTED"
-    makerEmail: string
-    checkerEmail: string | null
-    idempotencyKey: string
-    rejectReason: string | null
-    createdAt: string
-    validatedAt: string | null
-    pricePerSmsTtc: number | null
-    estimatedAmountTtc: number | null
-}
-
-interface ApiResponse {
-    totalPages: number
-    totalElements: number
-    content: CreditRequest[]
-    number: number
-    size: number
-    first: boolean
-    last: boolean
-}
+import { CreditRequest, ApiResponse } from '@/types/credit'
 
 export default function CreditsPage() {
     const [credits, setCredits] = useState<CreditRequest[]>([])
@@ -49,7 +24,6 @@ export default function CreditsPage() {
     const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED">("PENDING")
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
     const [selectedCredit, setSelectedCredit] = useState<CreditRequest | null>(null)
-    const [rejectReason, setRejectReason] = useState("")
     const [rejectLoading, setRejectLoading] = useState(false)
     const [viewReasonDialogOpen, setViewReasonDialogOpen] = useState(false)
     const [selectedRejectedCredit, setSelectedRejectedCredit] = useState<CreditRequest | null>(null)
@@ -133,7 +107,7 @@ export default function CreditsPage() {
             // Charger/rafraîchir aussi les compteurs globaux
             loadCounts()
         }
-    }, [token, currentPage, pageSize, statusFilter, loadCounts])
+    }, [token, currentPage, pageSize, statusFilter, loadCounts, loadCredits])
 
     const handleRefresh = useCallback(() => {
         return loadCredits(currentPage, statusFilter, pageSize)
@@ -213,7 +187,6 @@ export default function CreditsPage() {
             
             // Réinitialiser le formulaire et recharger les crédits
             setRejectDialogOpen(false)
-            setRejectReason("")
             await loadCredits(currentPage, statusFilter, pageSize)
             toast.success("Le crédit a été rejeté avec succès")
         } catch (error) {
@@ -224,41 +197,9 @@ export default function CreditsPage() {
         }
     }
 
-    const getStatusBadge = (status: string) => {
-        const statusConfig = {
-            PENDING: { label: "En attente", variant: "secondary", icon: Clock },
-            APPROVED: { label: "Approuvé", variant: "default", icon: CheckCircle },
-            REJECTED: { label: "Rejeté", variant: "destructive", icon: XCircle }
-        }
-
-        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDING
-        const IconComponent = config.icon
-
-        return (
-            <Badge variant={config.variant as "default" | "destructive" | "secondary"} className="flex items-center gap-1">
-                <IconComponent className="h-3 w-3" />
-                {config.label}
-            </Badge>
-        )
-    }
-
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString("fr-FR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        })
-    }
-
-    const formatAmount = (amount: number | null) => {
-        if (amount === null) return "N/A"
-        return new Intl.NumberFormat("fr-FR", {
-            style: "currency",
-            currency: "XOF",
-        }).format(amount)
-    }
+    // Note: helper functions (status badge, date and amount formatting) were removed
+    // because they were unused in this page; keep formatting logic close to where
+    // it's actually rendered if/when needed.
 
     const handlePageChange = (page: number) => {
         setCurrentPage(page)

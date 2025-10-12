@@ -52,5 +52,7 @@ export interface ReferentielItem {
     value2: string | null
     value3: string | null
     value4: string | null
+    // Optional code field used by some components
+    code?: string
     refCategory: string
 }

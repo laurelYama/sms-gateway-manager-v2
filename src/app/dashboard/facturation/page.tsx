@@ -6,57 +6,20 @@ import { useAuth } from "@/lib/auth"
 import { API_BASE_URL } from "@/lib/config"
 import { Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { FacturationActions } from "@/components/facturation/FacturationActions"
 import { FacturationTable } from "@/components/facturation/FacturationTable"
 import { CalendrierButton } from "@/components/facturation/CalendrierButton"
 import { GenerationFactureDialog } from "@/components/facturation/GenerationFactureDialog"
 import { ExerciceConfigDialog } from "@/components/facturation/ExerciceConfigDialog"
 import { GenerateUserInvoiceDialog } from "@/components/facturation/GenerateUserInvoiceDialog"
-import { Facture, Exercice, Calendrier, GenerationParams } from "@/components/facturation/types"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Facture, Exercice, Calendrier, GenerationParams, FooterConfig } from "@/components/facturation/types"
+// removed unused Table and Skeleton imports to reduce lint noise
 
-interface Facture {
-    id: string
-    clientId: string
-    dateDebut: string
-    dateFin: string
-    consommationSms: number
-    prixUnitaire: number
-    montant: number
-}
-
-interface Exercice {
-    id: string
-    annee: number
-    statut: string
-    createdAt: string
-}
-
-interface Calendrier {
-    id: string
-    mois: number
-    dateDebutConsommation: string
-    dateFinConsommation: string
-    dateGenerationFacture: string
-    exercice: Exercice
-}
-
-interface FooterConfig {
-    companyName: string
-    companyAddress: string
-    companyNif: string
-    companyRccm: string
-    companyEmail: string
-    companyPhone: string
-    paymentNote: string
-}
 
 export default function FacturationPage() {
     const [factures, setFactures] = useState<Facture[]>([])
-    const [calendrier, setCalendrier] = useState<Calendrier | null>(null)
+    const [calendrier, setCalendrier] = useState<Calendrier[]>([])
     const [availableYears, setAvailableYears] = useState<number[]>([])
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
     const [loading, setLoading] = useState<boolean>(true)
@@ -139,13 +102,34 @@ export default function FacturationPage() {
 
             // Pour chaque facture, on charge les informations du client
             const facturesAvecClients = await Promise.all(
-                facturesData.map(async (facture: any) => {
-                    const clientNom = await loadClientInfo(facture.clientId)
-                    return {
-                        ...facture,
+                facturesData.map(async (facture: unknown) => {
+                    const f = (facture && typeof facture === 'object') ? (facture as Record<string, unknown>) : {};
+                    const id = typeof f.id === 'string' ? f.id : '';
+                    const clientId = typeof f.clientId === 'string' ? f.clientId : '';
+                    const dateDebut = typeof f.dateDebut === 'string' ? f.dateDebut : '';
+                    const dateFin = typeof f.dateFin === 'string' ? f.dateFin : '';
+                    const consommationSms = typeof f.consommationSms === 'number' ? f.consommationSms : Number(f.consommationSms) || 0;
+                    const prixUnitaire = typeof f.prixUnitaire === 'number' ? f.prixUnitaire : Number(f.prixUnitaire) || 0;
+                    const montant = typeof f.montant === 'number' ? f.montant : Number(f.montant) || 0;
+                    const statut = typeof f.statut === 'string' ? (f.statut as Facture['statut']) : 'BROUILLON';
+                    const clientEmail = typeof f.clientEmail === 'string' ? f.clientEmail : '';
+
+                    const clientNom = clientId ? await loadClientInfo(clientId) : '';
+
+                    const factureObj: Facture = {
+                        id,
+                        clientId,
+                        dateDebut,
+                        dateFin,
+                        consommationSms,
+                        prixUnitaire,
+                        montant,
+                        statut,
                         clientNom,
-                        clientEmail: facture.clientEmail || ''
-                    }
+                        clientEmail
+                    };
+
+                    return factureObj;
                 })
             )
 
@@ -183,7 +167,7 @@ export default function FacturationPage() {
                     statusText: response.statusText || 'Pas de texte de statut',
                     year: annee,
                     url: response.url,
-                    error: null as any
+                    error: null as unknown
                 };
 
                 try {
@@ -193,11 +177,11 @@ export default function FacturationPage() {
                         errorInfo.error = await response.json();
                     } else {
                         const text = await response.text();
-                        errorInfo.error = { message: text };
+                        errorInfo.error = { message: text } as unknown;
                     }
                 } catch (parseError) {
                     console.warn('Erreur lors de l\'analyse de la réponse d\'erreur:', parseError);
-                    errorInfo.error = { message: 'Erreur lors de l\'analyse de la réponse' };
+                    errorInfo.error = { message: 'Erreur lors de l\'analyse de la réponse' } as unknown;
                 }
                 
                 // Journalisation sécurisée
@@ -233,8 +217,14 @@ export default function FacturationPage() {
                 }
 
                 // Pour les autres erreurs, lancer une exception avec un message clair
-                const errorMessage = errorInfo.error?.message || 
-                                  `Erreur ${response.status} lors du chargement du calendrier pour l'année ${annee}`;
+                // Extraire en sécurité un message depuis errorInfo.error (unknown)
+                const parsedMessage = (() => {
+                    const e = errorInfo.error as Record<string, unknown> | null;
+                    if (e && typeof e.message === 'string') return e.message;
+                    return undefined;
+                })();
+
+                const errorMessage = parsedMessage || `Erreur ${response.status} lors du chargement du calendrier pour l'année ${annee}`;
                 throw new Error(errorMessage);
             }
 
@@ -551,8 +541,8 @@ export default function FacturationPage() {
                             {loading ? 'Chargement...' : 'Générer une facture'}
                         </Button>
                         <div className="w-full sm:w-auto">
-                            <CalendrierButton 
-                                calendrier={calendrier || []}
+                <CalendrierButton 
+                    calendrier={calendrier}
                                 selectedYear={selectedYear}
                                 onYearChange={handleYearChange}
                                 loading={loading}
@@ -565,7 +555,6 @@ export default function FacturationPage() {
                 <div className="space-y-3 sm:space-y-4">
                     <FacturationActions 
                         onGenerate={() => setGenerationDialogOpen(true)}
-                        onDownloadAll={handleDownloadAll}
                         onConfigureFooter={() => setShowExerciceConfig(true)}
                         loading={loading}
                     />

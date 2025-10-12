@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, Users, FileText, MessageSquare, Database, CreditCard, Settings, Shield, ActivitySquare, Menu, X } from "lucide-react"
+import { LayoutDashboard, Users, FileText, MessageSquare, Database, CreditCard, Settings, Shield, ActivitySquare } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -23,35 +23,29 @@ const baseMenuItems = [
 const referentielItem = { name: "Référentiels", icon: Database, href: "/dashboard/referentiels" }
 
 export function Sidebar() {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const [isMobile, setIsMobile] = useState(false)
+    // mobile detection removed for now (not used)
     const pathname = usePathname()
     const { user } = useAuth()
     const isSuperAdmin = user?.role === 'SUPER_ADMIN'
     
     // Détecter si on est sur mobile
     useEffect(() => {
-        const checkIfMobile = () => {
-            setIsMobile(window.innerWidth < 768)
-        }
-        
-        // Vérifier au chargement
-        checkIfMobile()
-        
-        // Ajouter un écouteur pour les changements de taille
-        window.addEventListener('resize', checkIfMobile)
-        
-        // Nettoyer l'écouteur
-        return () => window.removeEventListener('resize', checkIfMobile)
+        // No-op: keeping the resize listener placeholder for future mobile-specific
+        // behavior. Currently it does nothing to avoid unused state.
+        const noop = () => {}
+        window.addEventListener('resize', noop)
+        return () => window.removeEventListener('resize', noop)
     }, [])
     
-    // Fermer le menu mobile lors du changement de route
+    // Fermer le menu mobile lors du changement de route (no-op since mobile menu
+    // state is not kept here; keep effect to avoid lint warnings about unused
+    // dependencies and to allow future extension)
     useEffect(() => {
-        setIsMobileMenuOpen(false)
+        // intentionally empty
     }, [pathname])
     
     // Créer la liste des éléments de menu
-    let menuItems = [...baseMenuItems]
+    const menuItems = [...baseMenuItems]
     
     // Ajouter Référentiels en 6ème position uniquement pour les SUPER_ADMIN
     if (isSuperAdmin) {
@@ -70,7 +64,7 @@ export function Sidebar() {
     const renderNavItems = (mobile = false) => {
         return (
             <nav className={`flex-1 ${mobile ? 'flex flex-row md:hidden' : 'hidden md:flex flex-col'}`}>
-                {menuItems.map((item) => {
+                {itemsToRender.map((item) => {
                     const isActive = pathname === item.href
                     return (
                         <div key={item.name} className={`relative group ${mobile ? 'flex-1' : 'mb-2'}`}>
@@ -199,7 +193,7 @@ export function Sidebar() {
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 shadow-[0_-2px_15px_rgba(0,0,0,0.08)]">
             <div className="max-w-full mx-auto px-1 py-1 overflow-x-auto">
                 <nav className="flex flex-nowrap min-w-max w-full">
-                    {menuItems.map((item) => {
+                    {itemsToRender.map((item) => {
                         const isActive = pathname === item.href;
                         return (
                             <div key={item.name} className="flex-shrink-0 w-20">

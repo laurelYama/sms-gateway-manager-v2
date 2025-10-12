@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { API_BASE_URL } from "@/lib/config"
 
@@ -12,7 +11,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
     const [loading, setLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
     const [successMessage, setSuccessMessage] = useState("")
-    const router = useRouter()
+    // router is not used in this form; keep code focused
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()

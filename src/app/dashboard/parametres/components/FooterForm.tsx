@@ -124,14 +124,14 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="companyName" className="text-sm font-medium">
-                  Nom de l'entreprise
+                  Nom de l&apos;entreprise
                 </label>
                 <Input
                   id="companyName"
                   name="companyName"
                   value={footerData.companyName}
                   onChange={handleChange}
-                  placeholder="Nom de l'entreprise"
+                  placeholder="Nom de l&apos;entreprise"
                 />
               </div>
 
@@ -144,7 +144,7 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
                   name="companyAddress"
                   value={footerData.companyAddress}
                   onChange={handleChange}
-                  placeholder="Adresse de l'entreprise"
+                  placeholder="Adresse de l&apos;entreprise"
                 />
               </div>
 

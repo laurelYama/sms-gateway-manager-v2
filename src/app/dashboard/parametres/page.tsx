@@ -101,7 +101,7 @@ export default function ParametresPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
         <p className="text-muted-foreground">
-          Gérer les paramètres de l'application
+          Gérer les paramètres de l&apos;application
         </p>
       </div>
 
@@ -129,13 +129,13 @@ export default function ParametresPage() {
             <div className="flex justify-between items-center p-6 border rounded-lg">
               <div>
                 <h3 className="text-lg font-medium">Exercice de facturation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Créez l'exercice fiscal (année) et choisissez le jour de génération des factures du mois suivant
-                </p>
+                    <p className="text-sm text-muted-foreground">
+                      Créez l&apos;exercice fiscal (année) et choisissez le jour de génération des factures du mois suivant
+                    </p>
               </div>
               <Button onClick={() => setExerciseOpen(true)}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                Définir l'exercice
+                Définir l&apos;exercice
               </Button>
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function ParametresPage() {
       <Dialog open={exerciseOpen} onOpenChange={setExerciseOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Définir l'exercice</DialogTitle>
+            <DialogTitle>Définir l&apos;exercice</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
@@ -226,7 +226,7 @@ export default function ParametresPage() {
                   if (!res.ok) {
                     const status = res.status
                     // On ne montre pas le message anglais du backend à l'utilisateur final
-                    let userDesc = "Une erreur est survenue lors de la création de l'exercice."
+                    let userDesc = "Une erreur est survenue lors de la création de l\'exercice."
                     if (status === 409) {
                       userDesc = "Un exercice pour cette année existe déjà. Cochez ‘Écraser si existe déjà’ pour le régénérer."
                     } else if (status === 400) {

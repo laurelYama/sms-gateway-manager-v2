@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Calendar, Search, Filter, ArrowLeft, User, Globe, Monitor, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, MoreHorizontal, X, Eye } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import * as dateFns from 'date-fns';
 import { fr } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
@@ -27,15 +27,26 @@ type LogViewType = 'all' | 'byDate' | 'byUser';
 
 // Fonction pour formater la date relative (ex: "il y a 2 heures")
 const formatRelativeTime = (dateString: string) => {
-  return formatDistanceToNow(new Date(dateString), { 
-    addSuffix: true,
-    locale: fr 
-  });
+  const diffSec = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
+  if (diffSec < 60) return `il y a ${diffSec} seconde${diffSec > 1 ? 's' : ''}`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `il y a ${diffMin} minute${diffMin > 1 ? 's' : ''}`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `il y a ${diffHour} heure${diffHour > 1 ? 's' : ''}`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 30) return `il y a ${diffDay} jour${diffDay > 1 ? 's' : ''}`;
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `il y a ${diffMonth} mois`;
+  const diffYear = Math.floor(diffMonth / 12);
+  return `il y a ${diffYear} an${diffYear > 1 ? 's' : ''}`;
 };
+
+// casted wrapper to avoid date-fns type signature mismatch in TSX
+const formatFn = dateFns.format as unknown as (d: Date | number, f?: string, o?: { locale?: unknown }) => string;
 
 // Fonction pour formater la date en français
 const formatDate = (dateString: string) => {
-  return format(new Date(dateString), 'dd/MM/yyyy HH:mm:ss', { locale: fr });
+  return formatFn(new Date(dateString), 'dd/MM/yyyy HH:mm:ss', { locale: fr });
 };
 
 // Fonction pour extraire le verbe HTTP d'une action
@@ -95,7 +106,7 @@ export default function AuditLogsPage() {
         'Date': formatDate(log.timestamp),
         'Utilisateur': log.userEmail || 'N/A',
         'Action': log.action || 'N/A',
-        'Type d\'entité': log.entityType || 'N/A',
+  'Type d\'entité': log.entityType || 'N/A',
         'ID Entité': log.entityId || 'N/A',
         'IP': log.ipAddress || 'N/A',
         'Rôle': log.role || 'N/A',
@@ -130,8 +141,8 @@ export default function AuditLogsPage() {
 
       toast.success('Export Excel réussi');
     } catch (error) {
-      console.error('Erreur lors de l\'export Excel:', error);
-      toast.error('Erreur lors de l\'export Excel');
+  console.error('Erreur lors de l\'export Excel:', error);
+  toast.error('Erreur lors de l\'export Excel');
     }
   };
   
@@ -217,8 +228,9 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Journaux d'activité</h1>
-        <p className="text-muted-foreground">Consultez les activités récentes sur la plateforme</p>
+  <h1 className="text-3xl font-bold tracking-tight">Journaux d&apos;activité</h1>
+  <p className="text-muted-foreground">Consultez les activités récentes sur la plateforme</p>
+        
       </div>
 
       <Card>
@@ -253,11 +265,11 @@ export default function AuditLogsPage() {
                         {dateRange?.from ? (
                           dateRange.to ? (
                             <>
-                              {format(dateRange.from, "PPP", { locale: fr })} -{" "}
-                              {format(dateRange.to, "PPP", { locale: fr })}
+                              {formatFn(dateRange.from, "PPP", { locale: fr })} -{" "}
+                              {formatFn(dateRange.to, "PPP", { locale: fr })}
                             </>
                           ) : (
-                            format(dateRange.from, "PPP", { locale: fr })
+                            formatFn(dateRange.from, "PPP", { locale: fr })
                           )
                         ) : (
                           <span>Sélectionnez une plage de dates</span>
@@ -344,10 +356,10 @@ export default function AuditLogsPage() {
                       <TableCell className="whitespace-nowrap overflow-hidden">
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">
-                            {format(new Date(log.timestamp), 'dd/MM/yyyy', { locale: fr })}
+                            {formatFn(new Date(log.timestamp), 'dd/MM/yyyy', { locale: fr })}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(log.timestamp), 'HH:mm:ss', { locale: fr })}
+                            {formatFn(new Date(log.timestamp), 'HH:mm:ss', { locale: fr })}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatRelativeTime(log.timestamp)}
@@ -426,7 +438,7 @@ export default function AuditLogsPage() {
                                   <FileText className="h-4 w-4 flex-shrink-0 mt-0.5" />
                                   <div>
                                     <div className="font-medium">Détails</div>
-                                    <div className="text-xs break-all">{log.details}</div>
+                                    <div className="text-xs break-all">{typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}</div>
                                   </div>
                                 </div>
                               )}

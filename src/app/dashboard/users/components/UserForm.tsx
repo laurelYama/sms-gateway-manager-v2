@@ -275,7 +275,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
         {!isEditing && (
           <div className="p-4 bg-blue-50 rounded-md">
             <p className="text-sm text-blue-700">
-              Le mot de passe sera généré automatiquement et envoyé par email à l'utilisateur.
+              Le mot de passe sera généré automatiquement et envoyé par email à l&apos;utilisateur.
             </p>
           </div>
         )}

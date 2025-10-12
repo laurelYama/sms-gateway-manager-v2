@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Eye, EyeOff } from "lucide-react"
@@ -19,17 +19,18 @@ export function ResetPasswordForm() {
     const [token, setToken] = useState("")
     const [passwordError, setPasswordError] = useState("")
     const router = useRouter()
-    const searchParams = useSearchParams()
 
     useEffect(() => {
-        // Récupérer le token depuis l'URL
-        const tokenParam = searchParams.get('token')
+        // Récupérer le token depuis l'URL côté client sans utiliser useSearchParams
+        if (typeof window === 'undefined') return
+        const params = new URLSearchParams(window.location.search)
+        const tokenParam = params.get('token')
         if (!tokenParam) {
             setErrorMessage("Lien de réinitialisation invalide ou expiré.")
         } else {
             setToken(tokenParam)
         }
-    }, [searchParams])
+    }, [])
 
     const validatePassword = (pwd: string) => {
         if (pwd.length < 12) {

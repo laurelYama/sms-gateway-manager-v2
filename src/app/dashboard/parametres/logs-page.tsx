@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Calendar, Search, Filter } from 'lucide-react';
-import { format } from 'date-fns';
+import * as dateFns from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -19,6 +19,14 @@ import { auditLogService, type AuditLog } from '@/services/auditLogService';
 type LogViewType = 'all' | 'byDate' | 'byUser';
 
 export default function LogsPage() {
+  // date-fns types conflict with installed @types/date-fns in this project
+  // use a permissive wrapper for format and access formatDistanceToNow via the
+  // namespace import to avoid signature/type mismatches
+  const formatFn = (dateFns.format as unknown as (
+    date: Date | number,
+    formatStr?: string,
+    options?: { locale?: unknown }
+  ) => string);
   const { user, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   
@@ -50,8 +58,9 @@ export default function LogsPage() {
       }
       
       setLogs(logsData);
-    } catch (error: any) {
-      console.error('Error fetching logs:', error);
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error('Error fetching logs:', errMsg);
     } finally {
       setLoadingLogs(false);
     }
@@ -82,7 +91,7 @@ export default function LogsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Journaux d'activité</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Journaux d&apos;activité</h1>
         <p className="text-muted-foreground">
           Consultez les activités récentes sur la plateforme
         </p>
@@ -120,11 +129,11 @@ export default function LogsPage() {
                         {dateRange?.from ? (
                           dateRange.to ? (
                             <>
-                              {format(dateRange.from, "PPP", { locale: fr })} -{" "}
-                              {format(dateRange.to, "PPP", { locale: fr })}
+                              {formatFn(dateRange.from, "PPP", { locale: fr })} -{" "}
+                              {formatFn(dateRange.to, "PPP", { locale: fr })}
                             </>
                           ) : (
-                            format(dateRange.from, "PPP", { locale: fr })
+                            formatFn(dateRange.from, "PPP", { locale: fr })
                           )
                         ) : (
                           <span>Sélectionnez une plage de dates</span>
@@ -199,7 +208,7 @@ export default function LogsPage() {
                     {filteredLogs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="whitespace-nowrap">
-                          {format(new Date(log.timestamp), 'PPpp', { locale: fr })}
+                          {formatFn(new Date(log.timestamp), 'PPpp', { locale: fr })}
                         </TableCell>
                         <TableCell className="font-medium">
                           {log.userEmail}

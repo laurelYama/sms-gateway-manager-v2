@@ -16,15 +16,18 @@ type AccordionProps = {
 
 export function Accordion({ defaultValue, className, children }: AccordionProps) {
   // Injecte la prop defaultOpen dans les AccordionItem dont la value == defaultValue
-  const enhanced = React.Children.map(children, (child: any) => {
+  const enhanced = React.Children.map(children, (child: unknown) => {
     if (!React.isValidElement(child)) return child
-    if (child.type?.displayName === "AccordionItem" && child.props?.value) {
-      const defaultOpen = child.props.value === defaultValue
-      return React.cloneElement(child, { defaultOpen })
+    const element = child as React.ReactElement & { props?: Record<string, unknown>; type?: unknown }
+    const props = element.props || {}
+    const typeObj = element.type as { displayName?: string } | undefined
+    if (typeObj?.displayName === "AccordionItem" && props.value) {
+      const defaultOpen = props.value === defaultValue
+      return React.cloneElement(element, { defaultOpen })
     }
-    return child
+    return element
   })
-  return <div className={cn("w-full", className)}>{enhanced}</div>
+  return <div className={cn("w-full", className)}>{enhanced as React.ReactNode}</div>
 }
 
 type AccordionItemProps = {

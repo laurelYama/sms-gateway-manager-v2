@@ -39,11 +39,15 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
         })
         if (!res.ok) throw new Error("Erreur API motifs")
         const data = await res.json()
-        const parsed: MotifItem[] = (Array.isArray(data) ? data : []).map((d: any) => ({
-          refID: d.refID,
-          keyValue: d.keyValue,
-          value1: d.value1,
-        }))
+        const parsed: MotifItem[] = (Array.isArray(data) ? data : []).map((d: unknown) => {
+          if (!d || typeof d !== 'object') return { refID: 0, keyValue: '', value1: '' } as MotifItem;
+          const dd = d as { refID?: unknown; keyValue?: unknown; value1?: unknown };
+          return {
+            refID: typeof dd.refID === 'number' ? dd.refID : Number(dd.refID) || 0,
+            keyValue: typeof dd.keyValue === 'string' ? dd.keyValue : String(dd.keyValue || ''),
+            value1: typeof dd.value1 === 'string' ? dd.value1 : String(dd.value1 || ''),
+          } as MotifItem;
+        })
         // Tri FR insensible aux accents/majuscules
         parsed.sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }))
         setMotifs(parsed)

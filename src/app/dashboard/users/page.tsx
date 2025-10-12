@@ -146,10 +146,28 @@ export default function UsersPage() {
       } catch (error) {
         console.error(`Erreur avec l'URL ${baseUrl}:`, error);
         lastError = error;
-        lastResponse = error.response?.data || null;
+        // Normalize error to a message and attempt to extract response data safely
+        let errMsg = 'Unknown error';
+        if (error instanceof Error) errMsg = error.message;
+        else if (typeof error === 'string') errMsg = error;
+
+        // Try to safely extract `response.data` from an unknown error object
+        const getErrorResponseData = (err: unknown): unknown | null => {
+          if (typeof err === 'object' && err !== null) {
+            const e = err as Record<string, unknown>;
+            const response = e['response'];
+            if (typeof response === 'object' && response !== null) {
+              const resp = response as Record<string, unknown>;
+              return resp['data'] ?? null;
+            }
+          }
+          return null;
+        };
+
+        lastResponse = getErrorResponseData(error);
         
         // Si c'est une erreur d'authentification, on arrête tout
-        if (error.message && error.message.includes('401')) {
+        if (errMsg && errMsg.includes('401')) {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('token');
             window.location.href = '/login';
@@ -158,12 +176,12 @@ export default function UsersPage() {
         }
         
         // Si c'est une erreur 500, on essaie l'URL suivante
-        if (error.message && error.message.includes('500')) {
+        if (errMsg && errMsg.includes('500')) {
           continue;
         }
         
-        // Pour les autres erreurs, on affiche un message et on continue
-        toast.error('Erreur lors du chargement des utilisateurs');
+  // Pour les autres erreurs, on affiche un message et on continue
+  toast.error(errMsg || 'Erreur lors du chargement des utilisateurs');
       }
     }
     
@@ -177,10 +195,20 @@ export default function UsersPage() {
       // Si on a une réponse partielle mais une erreur, on peut quand même essayer de l'utiliser
       if (lastResponse) {
         try {
-          const allManagers = Array.isArray(lastResponse) ? lastResponse : (lastResponse.content || lastResponse.data || []);
-          setManagers(allManagers);
-          setTotalPages(Math.ceil(allManagers.length / pageSize));
-          setTotalElements(allManagers.length);
+          // Narrow the shape of lastResponse before accessing properties
+          let allManagers: unknown = [];
+          if (Array.isArray(lastResponse)) {
+            allManagers = lastResponse;
+          } else if (typeof lastResponse === 'object' && lastResponse !== null) {
+            const lr = lastResponse as Record<string, unknown>;
+            const cand = lr['content'] ?? lr['data'] ?? lr['items'] ?? [];
+            allManagers = cand;
+          }
+
+          const managersArray = Array.isArray(allManagers) ? allManagers : [];
+          setManagers(managersArray as Manager[]);
+          setTotalPages(Math.ceil(managersArray.length / pageSize));
+          setTotalElements(managersArray.length);
           toast.warning('Certaines données peuvent être incomplètes en raison d\'une erreur partielle.');
         } catch (e) {
           console.error('Erreur lors du traitement de la réponse partielle:', e);
@@ -217,7 +245,7 @@ export default function UsersPage() {
         (manager.role && manager.role.toLowerCase().includes(searchTerm));
       
       // Filtre par rôle
-      const matchesRole = !roleFilter || roleFilter === '' || manager.role === roleFilter;
+  const matchesRole = roleFilter === '' || manager.role === roleFilter;
       
       return matchesSearch && matchesRole;
     });
@@ -270,7 +298,11 @@ export default function UsersPage() {
         if (!isMounted) return;
         
         // Ne pas afficher l'erreur si c'est une erreur d'annulation
-        if (error.name === 'AbortError') return;
+  // normalize unknown error
+  let errMsg2 = 'Unknown error';
+  if (error instanceof Error) errMsg2 = error.message;
+  else if (typeof error === 'string') errMsg2 = error;
+  if (errMsg2 === 'AbortError') return;
         
         // Gestion des tentatives de reconnexion
         if (retryCount < maxRetries) {
@@ -283,7 +315,7 @@ export default function UsersPage() {
         }
         
         // Afficher l'erreur après épuisement des tentatives
-        toast.error(error.message || 'Erreur lors du chargement des utilisateurs');
+  toast.error(errMsg2 || 'Erreur lors du chargement des utilisateurs');
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -576,8 +608,13 @@ export default function UsersPage() {
   }
 
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: unknown) => {
     if (!token) return
+    if (!data || typeof data !== 'object') {
+      toast.error('Données invalides');
+      return;
+    }
+    const d = data as { nomManager?: unknown; prenomManager?: unknown; email?: unknown; indicatif?: unknown; numeroTelephoneManager?: unknown; role?: unknown };
     
     const baseUrl = `${API_BASE_URL}/api/V1/managers`
     const url = currentManager 
@@ -588,12 +625,14 @@ export default function UsersPage() {
 
     // Préparer les données pour l'API
     const requestData = {
-      nomManager: data.nomManager,
-      prenomManager: data.prenomManager,
-      email: data.email,
-      numeroTelephoneManager: data.indicatif ? `${data.indicatif}${data.numeroTelephoneManager}` : data.numeroTelephoneManager,
+      nomManager: typeof d.nomManager === 'string' ? d.nomManager : undefined,
+      prenomManager: typeof d.prenomManager === 'string' ? d.prenomManager : undefined,
+      email: typeof d.email === 'string' ? d.email : undefined,
+      numeroTelephoneManager: typeof d.numeroTelephoneManager === 'string' || typeof d.numeroTelephoneManager === 'number'
+        ? (d.indicatif ? `${String(d.indicatif)}${String(d.numeroTelephoneManager)}` : String(d.numeroTelephoneManager))
+        : undefined,
       // Le mot de passe sera généré automatiquement par le serveur
-      role: data.role
+      role: typeof d.role === 'string' ? d.role : undefined
     }
 
     try {
@@ -626,7 +665,7 @@ export default function UsersPage() {
     return (
       <div className="container mx-auto p-6 space-y-6">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Vérification de l'authentification...</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Vérification de l&apos;authentification...</h1>
           <p className="text-muted-foreground">
             Veuillez patienter pendant le chargement de la page.
           </p>

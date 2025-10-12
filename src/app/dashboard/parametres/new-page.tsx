@@ -25,9 +25,9 @@ export default function ParametresPage() {
   const [loading, setLoading] = useState(true);
   const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
   const [footerData, setFooterData] = useState<FooterData>({
-    companyName: '',
-    companyAddress: '',
-    companyNif: '',
+          companyName: 'Solutech One',
+          companyAddress: '123 Rue de la Technologie, 75000 Paris',
+          companyNif: '1234567890',
     companyRccm: '',
     companyEmail: '',
     companyPhone: '',
@@ -72,16 +72,16 @@ export default function ParametresPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
-        <p className="text-muted-foreground">
-          Gérer les paramètres de l'application
-        </p>
+              <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
+              <p className="text-muted-foreground">
+                Gérer les paramètres de l&apos;application
+              </p>
       </div>
 
       <Tabs defaultValue="footer" className="space-y-4">
         <TabsList>
           <TabsTrigger value="footer">Pied de page</TabsTrigger>
-          <TabsTrigger value="logs">Journaux d'activité</TabsTrigger>
+          <TabsTrigger value="logs">Journaux d&apos;activité</TabsTrigger>
         </TabsList>
 
         <TabsContent value="footer">
@@ -104,7 +104,7 @@ export default function ParametresPage() {
         <TabsContent value="logs">
           <Card>
             <CardHeader>
-              <CardTitle>Journaux d'activité</CardTitle>
+              <CardTitle>Journaux d&apos;activité</CardTitle>
               <CardDescription>
                 Consultez les activités récentes sur la plateforme.
               </CardDescription>
@@ -112,9 +112,9 @@ export default function ParametresPage() {
             <CardContent>
               <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
                 <Activity className="h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-medium">Gestion des journaux d'activité</h3>
+                <h3 className="text-lg font-medium">Gestion des journaux d&apos;activité</h3>
                 <p className="text-sm text-muted-foreground max-w-md">
-                  Consultez et gérez les journaux d'activité pour suivre toutes les actions effectuées sur la plateforme.
+                  Consultez et gérez les journaux d&apos;activité pour suivre toutes les actions effectuées sur la plateforme.
                 </p>
                 <Button asChild>
                   <Link href="/dashboard/parametres/logs">
