@@ -44,9 +44,11 @@ export function LoginForm() {
                     motDePasse: motDePasse
                 })
             });
+            console.log('URL de l\'API :', `${API_BASE_URL}/api/V1/auth/login`);
 
             // Lire le contenu de la réponse une seule fois
             const responseText = await response.text();
+            console.log('Réponse brute du serveur :', responseText);
             let data;
             
             try {

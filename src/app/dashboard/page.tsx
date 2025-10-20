@@ -189,18 +189,35 @@ export default function DashboardPage() {
       }
 
       const currentYear = new Date().getFullYear();
-      const response = await fetch(`${API_BASE_URL}/api/V1/billing/exercices/${currentYear}/calendrier`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      let response;
+      let yearsToTry = [currentYear, currentYear - 1]; // Essayer l'année en cours, puis l'année précédente
+      
+      for (const year of yearsToTry) {
+        response = await fetch(`${API_BASE_URL}/api/V1/billing/exercices/${year}/calendrier`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          break; // Si la requête réussit, sortir de la boucle
+        } else if (response.status === 409) {
+          console.warn(`Année fiscale ${year} non trouvée ou non ouverte, tentative avec l'année précédente...`);
+          continue; // Essayer l'année suivante
+        } else {
+          const errorText = await response.text();
+          console.error('Erreur lors du chargement des données de facturation:', response.status, errorText);
+          return [];
+        }
+      }
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Erreur lors du chargement des données de facturation:', response.status, errorText);
+        console.warn('Aucune année fiscale valide trouvée pour les années:', yearsToTry.join(', '));
+        // Retourner un tableau vide au lieu de générer une erreur
+        setBillingData([]);
         return [];
       }
 

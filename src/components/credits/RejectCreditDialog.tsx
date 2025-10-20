@@ -31,7 +31,7 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
         setLoadingMotifs(true)
         const token = getToken()
         if (!token) return
-        const res = await fetch(`${API_BASE_URL}/api/v1/referentiel/categorie/005`, {
+        const res = await fetch(`${API_BASE_URL}/api/V1/referentiel/categorie/005`, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: "application/json",

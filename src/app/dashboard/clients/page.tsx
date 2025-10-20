@@ -110,7 +110,7 @@ export default function ClientsPage() {
 
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/v1/referentiel/categorie/${category}`,
+                `${API_BASE_URL}/api/V1/referentiel/categorie/${category}`, 
                 {
                     headers: {
                         Authorization: `Bearer ${currentToken}`,

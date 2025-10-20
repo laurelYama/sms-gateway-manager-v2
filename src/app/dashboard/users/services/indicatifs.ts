@@ -13,7 +13,7 @@ export interface IndicatifPays {
 }
 
 export async function fetchIndicatifs(token: string): Promise<IndicatifPays[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/referentiel/categorie/004`, {
+  const response = await fetch(`${API_BASE_URL}/api/V1/referentiel/categorie/004`, {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
