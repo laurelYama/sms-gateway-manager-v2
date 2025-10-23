@@ -115,11 +115,7 @@ export const columns = (
                 onClick={() => {
                   if (!referentiel.refID) {
                     console.error('Tentative d\'édition d\'un référentiel sans refID:', referentiel);
-                    toast({
-                      title: "Erreur",
-                      description: "Impossible de modifier ce référentiel: refID manquant",
-                      variant: "destructive",
-                    });
+                    toast.error("Impossible de modifier ce référentiel: refID manquant");
                     return;
                   }
                   onEdit(referentiel);

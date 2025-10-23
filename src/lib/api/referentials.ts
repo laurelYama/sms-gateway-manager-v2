@@ -55,7 +55,7 @@ export async function getReferentials(): Promise<Referentiel[]> {
     }
     
     // Valider et transformer les données
-    const referentialsWithId = data.map((item: any, index: number) => {
+    const referentialsWithId = data.map((item: Record<string, unknown>, index: number) => {
       // Vérifier que l'élément est un objet valide
       if (!item || typeof item !== 'object' || Array.isArray(item)) {
         console.error(`Élément invalide à l'index ${index}:`, item);
@@ -67,19 +67,22 @@ export async function getReferentials(): Promise<Referentiel[]> {
         console.warn(`Référentiel incomplet à l'index ${index}:`, item);
       }
       
+      // Convertir explicitement en nombres et gérer les valeurs manquantes
+      const refID = Number(item.refID) || Number(item.id) || 0;
+      
       // Créer un objet avec une structure cohérente
       const referential: Referentiel = {
-        refID: item.refID || item.id, // Utiliser refID ou id comme fallback
-        keyValue: item.keyValue || '',
-        value1: item.value1 || '',
-        value2: item.value2 || '',
-        value3: item.value3 || '',
-        value4: item.value4 || '',
-        refCategory: item.refCategory || '',
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
+        refID: refID,
+        keyValue: String(item.keyValue || ''),
+        value1: String(item.value1 || ''),
+        value2: String(item.value2 || ''),
+        value3: String(item.value3 || ''),
+        value4: String(item.value4 || ''),
+        refCategory: String(item.refCategory || ''),
+        createdAt: item.createdAt ? String(item.createdAt) : undefined,
+        updatedAt: item.updatedAt ? String(item.updatedAt) : undefined,
         // Pour la rétrocompatibilité
-        id: item.refID || item.id
+        id: refID
       };
       
       return referential;
@@ -122,7 +125,7 @@ export async function createReferential(data: ReferentielFormData): Promise<Refe
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error: { message: string } = await response.json();
     throw new Error(error.message || 'Erreur lors de la création du référentiel');
   }
 
@@ -178,7 +181,7 @@ export async function updateReferential(refID: string | number, data: Referentie
     // Gestion des erreurs HTTP
     if (!response.ok) {
       let errorMessage = `Erreur HTTP ${response.status} ${response.statusText}`;
-      let errorDetails: any = {};
+      let errorDetails: Record<string, unknown> = {};
       
       try {
         // Essayer de parser le corps de la réponse comme JSON
@@ -187,12 +190,24 @@ export async function updateReferential(refID: string | number, data: Referentie
         
         if (responseText) {
           try {
-            errorDetails = JSON.parse(responseText);
+            const parsedResponse = JSON.parse(responseText);
+            errorDetails = typeof parsedResponse === 'object' && parsedResponse !== null 
+              ? parsedResponse 
+              : { message: responseText };
             console.error('Détails de l\'erreur (JSON):', errorDetails);
-            errorMessage = errorDetails.message || errorDetails.error || errorMessage;
-          } catch (e) {
-            console.error('La réponse n\'est pas du JSON valide, utilisation du texte brut');
-            errorDetails = { raw: responseText };
+            
+            // Vérifier le type de errorDetails.message et errorDetails.error avant de les utiliser
+            const message = errorDetails && typeof errorDetails === 'object' && 'message' in errorDetails && typeof errorDetails.message === 'string' 
+              ? errorDetails.message 
+              : undefined;
+            const error = errorDetails && typeof errorDetails === 'object' && 'error' in errorDetails && typeof errorDetails.error === 'string'
+              ? errorDetails.error
+              : undefined;
+              
+            errorMessage = message || error || errorMessage;
+          } catch (parseError) {
+            console.error('Erreur lors du parsing de la réponse d\'erreur:', parseError);
+            errorDetails = { message: responseText };
             errorMessage = responseText || errorMessage;
           }
         }
@@ -204,7 +219,11 @@ export async function updateReferential(refID: string | number, data: Referentie
       console.error(fullErrorMessage, { status: response.status, details: errorDetails });
       
       // Création d'une erreur enrichie avec plus de détails
-      const error = new Error(fullErrorMessage) as any;
+      interface ExtendedError extends Error {
+        status?: number;
+        details?: unknown;
+      }
+      const error: ExtendedError = new Error(fullErrorMessage);
       error.status = response.status;
       error.details = errorDetails;
       throw error;
@@ -279,7 +298,7 @@ export async function deleteReferential(refID: string | number): Promise<void> {
     // Gestion des erreurs HTTP
     if (!response.ok) {
       let errorMessage = `Erreur HTTP ${response.status} ${response.statusText}`;
-      let errorDetails: any = { status: response.status };
+      let errorDetails: { status: number; [key: string]: unknown } = { status: response.status };
       
       try {
         // Essayer de parser la réponse comme JSON
@@ -288,10 +307,23 @@ export async function deleteReferential(refID: string | number): Promise<void> {
         
         if (responseText) {
           try {
-            errorDetails = { ...JSON.parse(responseText), status: response.status };
-            errorMessage = errorDetails.message || errorDetails.error || errorMessage;
+            const parsedResponse = JSON.parse(responseText);
+            errorDetails = { 
+              ...(typeof parsedResponse === 'object' && parsedResponse !== null ? parsedResponse : {}), 
+              status: response.status 
+            };
+            
+            // Vérifier le type de errorDetails.message et errorDetails.error avant de les utiliser
+            const message = 'message' in errorDetails && typeof errorDetails.message === 'string' 
+              ? errorDetails.message 
+              : undefined;
+            const error = 'error' in errorDetails && typeof errorDetails.error === 'string'
+              ? errorDetails.error
+              : undefined;
+              
+            errorMessage = message || error || errorMessage;
             console.error('Détails de l\'erreur:', errorDetails);
-          } catch (e) {
+          } catch (_) {
             console.error('La réponse n\'est pas du JSON valide, utilisation du texte brut');
             errorDetails.raw = responseText;
             errorMessage = responseText || errorMessage;
@@ -301,8 +333,11 @@ export async function deleteReferential(refID: string | number): Promise<void> {
         console.error('Erreur lors de la lecture de la réponse:', e);
       }
       
-      const error = new Error(`Erreur lors de la suppression du référentiel: ${errorMessage}`) as any;
-      error.details = errorDetails;
+      const error = new Error(`Erreur lors de la suppression du référentiel: ${errorMessage}`);
+      Object.defineProperty(error, 'details', {
+        value: errorDetails,
+        enumerable: false
+      });
       throw error;
     }
     

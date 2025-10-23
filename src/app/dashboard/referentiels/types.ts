@@ -25,4 +25,7 @@ export const REFERENTIEL_CATEGORIES: Record<string, string> = {
   '005': 'Motifs de rejet'
 } as const;
 
-export type ReferentielFormData = Omit<Referentiel, 'id' | 'createdAt' | 'updatedAt'>;
+// Pour la création, refID est optionnel car généré côté serveur
+export type ReferentielFormData = Omit<Referentiel, 'id' | 'createdAt' | 'updatedAt' | 'refID'> & {
+  refID?: number;
+};

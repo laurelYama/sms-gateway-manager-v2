@@ -114,12 +114,18 @@ export function ReferentialForm({
       if (initialData) {
         console.log('Mise à jour du référentiel avec ID:', initialData.id);
         console.log('Données du formulaire:', values);
-        await updateReferential(initialData.id!, values);
+        // Inclure le refID lors de la mise à jour
+        await updateReferential(initialData.id!, {
+          ...values,
+          refID: initialData.refID
+        });
         toast({
           title: 'Succès',
           description: 'Le référentiel a été mis à jour avec succès.',
         });
       } else {
+        // Pour une création, on utilise les valeurs du formulaire directement
+        // car le refID sera généré côté serveur
         await createReferential(values);
         toast({
           title: 'Succès',

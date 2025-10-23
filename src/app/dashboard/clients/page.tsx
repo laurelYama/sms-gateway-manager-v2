@@ -442,7 +442,7 @@ nif: client.nif || "",
             if (!response.ok) {
                 let errorMessage = "Erreur lors de la création du client";
                 let errorDetails: string | undefined;
-                let responseContent: any;
+                let responseContent: Record<string, unknown> | string | null = null;
 
                 // D'abord, essayer de lire le contenu de la réponse
                 try {
@@ -454,19 +454,18 @@ nif: client.nif || "",
                     } else {
                         // Essayer de parser uniquement si ce n'est pas vide
                         try {
-                            responseContent = JSON.parse(responseText);
+                            const parsedContent = JSON.parse(responseText) as Record<string, unknown> | string;
+                            responseContent = parsedContent;
                             
-                            if (responseContent) {
-                                if (typeof responseContent === 'object') {
-                                    errorMessage = responseContent.message || errorMessage;
-                                    if (responseContent.errors) {
-                                        errorDetails = typeof responseContent.errors === 'string' 
-                                            ? responseContent.errors 
-                                            : Object.values(responseContent.errors).join(' ');
-                                    }
-                                } else if (typeof responseContent === 'string') {
-                                    errorMessage = responseContent || errorMessage;
+                            if (responseContent && typeof responseContent === 'object' && !Array.isArray(responseContent)) {
+                                errorMessage = (responseContent.message as string) || errorMessage;
+                                if (responseContent.errors) {
+                                    errorDetails = typeof responseContent.errors === 'string' 
+                                        ? responseContent.errors 
+                                        : Object.values(responseContent.errors as Record<string, unknown>).join(' ');
                                 }
+                            } else if (typeof responseContent === 'string') {
+                                errorMessage = responseContent || errorMessage;
                             }
                         } catch (parseError) {
                             // Si le parsing JSON échoue, utiliser le texte brut

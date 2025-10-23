@@ -44,14 +44,25 @@ export default function ReferentielsPage() {
           return null;
         }
         
-        // Vérifier la présence de l'ID
-        if (!item.id) {
-          // Créer un ID temporaire si nécessaire
-          return { ...item, _tempId: `temp-${Date.now()}` };
-        }
+        // Vérifier que l'élément est valide et a les propriétés requises
+        if (!item || typeof item !== 'object') return null;
         
-        return item;
-      }).filter(Boolean); // Filtrer les éléments nuls
+        // Créer un objet avec les propriétés requises de Referentiel
+        const validatedItem: Referentiel = {
+          refID: Number(item.refID) || 0,
+          keyValue: String(item.keyValue || ''),
+          value1: String(item.value1 || ''),
+          value2: String(item.value2 || ''),
+          value3: String(item.value3 || ''),
+          value4: String(item.value4 || ''),
+          refCategory: String(item.refCategory || ''),
+          createdAt: item.createdAt ? String(item.createdAt) : undefined,
+          updatedAt: item.updatedAt ? String(item.updatedAt) : undefined,
+          id: item.id ? Number(item.id) : undefined
+        };
+        
+        return validatedItem;
+      }).filter((item): item is Referentiel => item !== null);
       
       setData(validatedData);
       return validatedData;

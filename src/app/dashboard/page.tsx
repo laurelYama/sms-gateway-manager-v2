@@ -190,7 +190,7 @@ export default function DashboardPage() {
 
       const currentYear = new Date().getFullYear();
       let response;
-      let yearsToTry = [currentYear, currentYear - 1]; // Essayer l'année en cours, puis l'année précédente
+      const yearsToTry = [currentYear, currentYear - 1]; // Essayer l'année en cours, puis l'année précédente
       
       for (const year of yearsToTry) {
         response = await fetch(`${API_BASE_URL}/api/V1/billing/exercices/${year}/calendrier`, {
@@ -214,7 +214,7 @@ export default function DashboardPage() {
         }
       }
 
-      if (!response.ok) {
+      if (!response || !response.ok) {
         console.warn('Aucune année fiscale valide trouvée pour les années:', yearsToTry.join(', '));
         // Retourner un tableau vide au lieu de générer une erreur
         setBillingData([]);
