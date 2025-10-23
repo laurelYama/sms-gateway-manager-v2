@@ -109,7 +109,7 @@ export function CreditList({
           <TableRow>
             <TableHead>ID commande</TableHead>
             <TableHead>Client</TableHead>
-            <TableHead>Quantité</TableHead>
+            <TableHead>Nbr SMS</TableHead>
             <TableHead>Statut</TableHead>
             <TableHead>Créé le</TableHead>
             <TableHead>Validé le</TableHead>

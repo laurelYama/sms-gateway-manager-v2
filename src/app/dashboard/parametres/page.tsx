@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Settings, Calendar as CalendarIcon } from 'lucide-react';
 import { FooterForm } from './components/FooterForm';
@@ -13,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API_BASE_URL } from '@/lib/config';
 import { getToken } from '@/lib/auth';
+import { toast } from 'sonner';
 
 interface FooterData {
   companyName: string;
@@ -25,7 +25,6 @@ interface FooterData {
 }
 
 export default function ParametresPage() {
-  const { toast } = useToast();
   const router = useRouter();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -226,9 +225,9 @@ export default function ParametresPage() {
                   if (!res.ok) {
                     const status = res.status
                     // On ne montre pas le message anglais du backend à l'utilisateur final
-                    let userDesc = "Une erreur est survenue lors de la création de l\'exercice."
+                    let userDesc = "Une erreur est survenue lors de la création de l'exercice."
                     if (status === 409) {
-                      userDesc = "Un exercice pour cette année existe déjà. Cochez ‘Écraser si existe déjà’ pour le régénérer."
+                      userDesc = "Un exercice pour cette année existe déjà."
                     } else if (status === 400) {
                       userDesc = "Requête invalide. Vérifiez l’année et le jour de génération."
                     } else if (status === 401 || status === 403) {
@@ -239,15 +238,24 @@ export default function ParametresPage() {
                       userDesc = "Erreur serveur. Réessayez plus tard."
                     }
 
-                    const title = status === 409 ? 'Conflit' : 'Erreur'
-                    toast({ title, description: userDesc, variant: 'destructive' })
-                    return;
-                  }
-                  toast({ title: 'Exercice défini', description: `Exercice ${exerciseYear} enregistré` });
+                    const title = status === 409 ? 'Conflit' : 'Erreur';
+                  toast.error(userDesc, {
+                    id: 'exercise-error',
+                    duration: 5000,
+                  });
+                  return;
+                }
+                toast.success(`Exercice ${exerciseYear} enregistré avec succès`, {
+                  id: 'exercise-success',
+                  duration: 5000,
+                });
                   setExerciseOpen(false);
                 } catch (error) {
                   console.error(error);
-                  toast({ title: 'Échec', description: error instanceof Error ? error.message : 'Erreur inconnue', variant: 'destructive' });
+                  toast.error(error instanceof Error ? error.message : 'Une erreur inconnue est survenue', {
+                    id: 'exercise-error',
+                    duration: 5000,
+                  });
                 } finally {
                   setCreating(false);
                 }

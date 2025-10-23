@@ -27,7 +27,7 @@ export function ViewRejectReasonDialog({ open, onOpenChange, credit }: ViewRejec
             <div className="bg-muted/20 p-4 rounded-lg space-y-1">
               <p className="text-sm"><span className="font-medium">ID :</span> {credit.id.substring(0, 8)}...</p>
               <p className="text-sm"><span className="font-medium">Client :</span> {credit.clientId}</p>
-              <p className="text-sm"><span className="font-medium">Quantité :</span> {credit.quantity}</p>
+              <p className="text-sm"><span className="font-medium">Nbr SMS :</span> {credit.quantity}</p>
               <p className="text-sm">
                 <span className="font-medium">Date :</span>{" "}
                 {credit.createdAt ? (

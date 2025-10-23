@@ -79,16 +79,19 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Rejeter la demande de crédit</DialogTitle>
-            <DialogDescription>
+            <div className="text-sm text-muted-foreground">
               Êtes-vous sûr de vouloir rejeter cette demande de crédit ?
               {credit && (
                 <div className="mt-2 space-y-1">
-                  <p className="text-sm">ID: {credit.id}</p>
-                  <p className="text-sm">Client: {credit.clientId}</p>
-                  <p className="text-sm">Quantité: {credit.quantity}</p>
+                  <div className="text-sm">
+                    <span className="font-medium">ID commande :</span> {credit.requestCode || `${credit.id.substring(0, 8)}...`}
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Nbr SMS :</span> {credit.quantity}
+                  </div>
                 </div>
               )}
-            </DialogDescription>
+            </div>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">

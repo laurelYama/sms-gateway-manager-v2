@@ -991,58 +991,78 @@ export default function DashboardPage() {
           }
         })
 
-        if (response.ok) {
-          const smsList = await response.json()
-
-          // Compter les SMS par client
-          const clientActivity: Record<string, {
-            clientId: string
-            emetteur: string
-            count: number
-            lastActivity: string
-          }> = {}
-
-          smsList.forEach((sms: unknown) => {
-            if (!sms || typeof sms !== 'object') return;
-            const s = sms as Record<string, unknown>;
-
-            const clientId = typeof s.clientId === 'string' ? s.clientId : String(s.clientId ?? 'unknown');
-            const emetteur = typeof s.emetteur === 'string' && s.emetteur ? String(s.emetteur) : 'Inconnu';
-            const lastActivity = String(s.updatedAt ?? s.createdAt ?? new Date().toISOString());
-
-            if (!clientActivity[clientId]) {
-              clientActivity[clientId] = {
-                clientId,
-                emetteur,
-                count: 0,
-                lastActivity
-              }
-            }
-            clientActivity[clientId].count++;
-
-            // Mettre à jour la dernière activité si plus récente
-            const smsDateRaw = s.updatedAt ?? s.createdAt;
-            if (smsDateRaw) {
-              const smsDateStr = String(smsDateRaw);
-              if (smsDateStr > clientActivity[clientId].lastActivity) {
-                clientActivity[clientId].lastActivity = smsDateStr;
-              }
-            }
-          })
-
-          // Trier par nombre de SMS (décroissant) et prendre les 5 premiers
-          const sortedClients = Object.values(clientActivity)
-              .sort((a, b) => b.count - a.count)
-              .slice(0, 5)
-              .map(client => ({
-                clientId: client.clientId,
-                emetteur: client.emetteur,
-                messageCount: client.count,
-                lastActivity: client.lastActivity
-              }))
-
-          setTopActiveClients(sortedClients)
+        if (!response.ok) {
+          console.error('Erreur lors de la récupération des SMS en attente:', response.status, response.statusText)
+          return
         }
+
+        // Vérifier que la réponse contient du contenu avant de parser
+        const responseText = await response.text()
+        if (!responseText) {
+          console.warn('La réponse est vide')
+          return
+        }
+
+        let smsList: unknown[] = []
+        try {
+          smsList = JSON.parse(responseText)
+          if (!Array.isArray(smsList)) {
+            console.warn('La réponse n\'est pas un tableau valide:', smsList)
+            return
+          }
+        } catch (error) {
+          console.error('Erreur lors du parsing de la réponse JSON:', error)
+          return
+        }
+
+        // Compter les SMS par client
+        const clientActivity: Record<string, {
+          clientId: string
+          emetteur: string
+          count: number
+          lastActivity: string
+        }> = {}
+
+        for (const sms of smsList) {
+          if (!sms || typeof sms !== 'object') continue
+          const s = sms as Record<string, unknown>
+
+          const clientId = typeof s.clientId === 'string' ? s.clientId : String(s.clientId ?? 'unknown')
+          const emetteur = typeof s.emetteur === 'string' && s.emetteur ? String(s.emetteur) : 'Inconnu'
+          const lastActivity = String(s.updatedAt ?? s.createdAt ?? new Date().toISOString())
+
+          if (!clientActivity[clientId]) {
+            clientActivity[clientId] = {
+              clientId,
+              emetteur,
+              count: 0,
+              lastActivity
+            }
+          }
+          clientActivity[clientId].count++
+
+          // Mettre à jour la dernière activité si plus récente
+          const smsDateRaw = s.updatedAt ?? s.createdAt
+          if (smsDateRaw) {
+            const smsDateStr = String(smsDateRaw)
+            if (smsDateStr > clientActivity[clientId].lastActivity) {
+              clientActivity[clientId].lastActivity = smsDateStr
+            }
+          }
+        }
+
+        // Trier par nombre de SMS (décroissant) et prendre les 5 premiers
+        const sortedClients = Object.values(clientActivity)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5)
+          .map(client => ({
+            clientId: client.clientId,
+            emetteur: client.emetteur,
+            messageCount: client.count,
+            lastActivity: client.lastActivity
+          }))
+
+        setTopActiveClients(sortedClients)
       } catch (error) {
         console.error('Erreur lors de la récupération des clients actifs:', error)
       } finally {
