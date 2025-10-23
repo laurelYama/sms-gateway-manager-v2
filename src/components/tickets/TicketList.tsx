@@ -399,17 +399,36 @@ export function TicketList() {
 
                                         {isExpanded && (
                                             <div className="p-3 sm:p-4 flex flex-col gap-4">
+                                                {/* Description du ticket */}
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
+                                                        <h4 className="font-medium text-gray-900">Description</h4>
+                                                    </div>
+                                                    <p className="text-gray-800 pl-4 whitespace-pre-line">{ticket.description}</p>
+                                                </div>
+
                                                 {/* Réponse existante */}
-                                                {hasResponse && (
+                                                {hasResponse ? (
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                                            <h4 className="font-medium text-blue-900">Notre réponse</h4>
+                                                            <h4 className="font-medium text-blue-900">Réponse du support</h4>
                                                         </div>
-                                                        <p className="text-blue-800 pl-4">{ticket.reponseAdmin}</p>
+                                                        <p className="text-blue-800 pl-4 whitespace-pre-line">{ticket.reponseAdmin}</p>
                                                         <div className="text-xs text-blue-600 mt-1 pl-4">
-                                                            Répondu le {formatDate(ticket.updatedAt)}
+                                                            Dernière mise à jour : {formatDate(ticket.updatedAt)}
                                                         </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-2 h-2 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                                                            <h4 className="font-medium text-yellow-900">Statut</h4>
+                                                        </div>
+                                                        <p className="text-yellow-800 pl-4">
+                                                            En attente de traitement par notre équipe
+                                                        </p>
                                                     </div>
                                                 )}
 

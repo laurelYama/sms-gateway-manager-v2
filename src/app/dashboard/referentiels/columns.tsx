@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Pencil, Trash2, MoreHorizontal } from "lucide-react"
@@ -10,6 +11,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
+import { DeleteConfirmationDialog } from "@/components/ui/delete-confirmation-dialog"
 
 export const columns = (
   onEdit: (referentiel: Referentiel) => void,
@@ -65,48 +68,89 @@ export const columns = (
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      const referentiel = row.original
-
-      const handleDelete = async () => {
-        if (window.confirm("Êtes-vous sûr de vouloir supprimer ce référentiel ?")) {
-          try {
-            await deleteReferential(referentiel.id!)
-            onDeleteSuccess()
-          } catch (error) {
-            console.error("Erreur lors de la suppression:", error)
-            alert("Une erreur est survenue lors de la suppression.")
-          }
-        }
+    cell: function ActionsCell({ row }) {
+      const referentiel = row.original;
+      const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+      const [isDeleting, setIsDeleting] = useState(false);
+      
+      console.log('Données du référentiel dans la cellule:', referentiel);
+      
+      if (!referentiel || Object.keys(referentiel).length === 0) {
+        console.error('Référentiel vide ou invalide dans la cellule:', row);
+        return null;
       }
 
+      const handleDelete = async () => {
+        if (!referentiel.refID) {
+          toast.error("Impossible de supprimer ce référentiel: refID manquant");
+          return;
+        }
+
+        try {
+          setIsDeleting(true);
+          await deleteReferential(referentiel.refID);
+          onDeleteSuccess();
+          toast.success("Le référentiel a été supprimé avec succès.");
+        } catch (error) {
+          console.error("Erreur lors de la suppression:", error);
+          toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.");
+        } finally {
+          setIsDeleting(false);
+          setIsDeleteDialogOpen(false);
+        }
+      };
+
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Ouvrir le menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem 
-              onClick={() => onEdit(referentiel)}
-              className="cursor-pointer"
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Modifier
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={handleDelete}
-              className="cursor-pointer text-red-600"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Ouvrir le menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => {
+                  if (!referentiel.refID) {
+                    console.error('Tentative d\'édition d\'un référentiel sans refID:', referentiel);
+                    toast({
+                      title: "Erreur",
+                      description: "Impossible de modifier ce référentiel: refID manquant",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  onEdit(referentiel);
+                }}
+                className="cursor-pointer"
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Modifier</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setIsDeleteDialogOpen(true)}
+                className="text-red-600 cursor-pointer"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Supprimer</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DeleteConfirmationDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onConfirm={handleDelete}
+            title="Supprimer le référentiel"
+            description="Êtes-vous sûr de vouloir supprimer ce référentiel ? Cette action est irréversible."
+            confirmText="Supprimer"
+            cancelText="Annuler"
+            loading={isDeleting}
+          />
+        </div>
+      );
     },
   },
-]
+];

@@ -10,6 +10,7 @@ import { columns } from './columns';
 import { ReferentialForm } from './referential-form';
 import { Referentiel, REFERENTIEL_CATEGORIES } from './types';
 import { getReferentials, searchReferentials, getCategories } from '@/lib/api/referentials';
+import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ReferentielsPage() {
@@ -35,19 +36,39 @@ export default function ReferentielsPage() {
     setIsLoading(true);
     try {
       const allData = await getReferentials();
-      setData(allData);
-      return allData;
+      
+      // Vérifier que chaque élément a un ID
+      const validatedData = allData.map((item) => {
+        // S'assurer que l'item est un objet valide
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        
+        // Vérifier la présence de l'ID
+        if (!item.id) {
+          // Créer un ID temporaire si nécessaire
+          return { ...item, _tempId: `temp-${Date.now()}` };
+        }
+        
+        return item;
+      }).filter(Boolean); // Filtrer les éléments nuls
+      
+      setData(validatedData);
+      return validatedData;
     } catch (error) {
       console.error('Erreur lors du chargement des référentiels:', error);
       throw error;
     } finally {
+      console.log('Fin du chargement des référentiels');
       setIsLoading(false);
     }
   }, []);
 
   // Filtrer les données en fonction de la recherche et de la catégorie
   const filterData = useCallback((data: Referentiel[], search: string, category: string): Referentiel[] => {
-    if (!data) return [];
+    if (!data || !Array.isArray(data)) {
+      return [];
+    }
     
     return data.filter(item => {
       if (!item) return false;
@@ -82,9 +103,16 @@ export default function ReferentielsPage() {
     const loadInitialData = async () => {
       try {
         await fetchAllData();
-        const categories = await getCategories();
-        setAvailableCategories(categories);
+        try {
+          const categories = await getCategories();
+          setAvailableCategories(categories);
+        } catch (categoryError) {
+          console.error('Erreur lors du chargement des catégories:', categoryError);
+          // On continue même si le chargement des catégories échoue
+          setAvailableCategories([]);
+        }
       } catch (error) {
+        // L'erreur est déjà gérée dans fetchAllData
         console.error('Erreur lors du chargement initial des données:', error);
       }
     };
@@ -104,14 +132,26 @@ export default function ReferentielsPage() {
   // La fonction loadCategories a été intégrée dans l'effet initial
 
   const handleEdit = (referentiel: Referentiel) => {
+    console.log('Édition du référentiel:', referentiel);
+    if (!referentiel.id) {
+      console.error('Tentative d\'édition d\'un référentiel sans ID:', referentiel);
+      return;
+    }
     setEditingReferentiel(referentiel);
     setIsFormOpen(true);
   };
 
-  const handleFormSuccess = () => {
+  const handleFormSuccess = (isNew: boolean) => {
     setIsFormOpen(false);
     setEditingReferentiel(null);
     fetchAllData(); // Recharger toutes les données
+    
+    // Afficher une notification de succès
+    if (isNew) {
+      toast.success("Le référentiel a été ajouté avec succès");
+    } else {
+      toast.success("Le référentiel a été mis à jour avec succès");
+    }
   };
 
   return (
@@ -170,6 +210,7 @@ export default function ReferentielsPage() {
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={(size) => {
+            console.log('Changement de la taille de la page:', size);
             setPageSize(size);
             setCurrentPage(0); // Réinitialiser à la première page lors du changement de taille de page
           }}
@@ -184,7 +225,7 @@ export default function ReferentielsPage() {
             setEditingReferentiel(null);
           }
         }}
-        onSuccess={handleFormSuccess}
+        onSuccess={() => handleFormSuccess(!editingReferentiel)}
         initialData={editingReferentiel}
       />
     </div>

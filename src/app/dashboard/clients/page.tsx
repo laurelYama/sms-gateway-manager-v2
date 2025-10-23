@@ -301,8 +301,11 @@ export default function ClientsPage() {
       adresse: client.adresse || "",
       telephone: numero || "",
       email: client.email || "",
-      nif: client.nif || "",
+nif: client.nif || "",
       rccm: client.rccm || "",
+      emetteur: client.emetteur || "",
+      coutSmsTtc: client.coutSmsTtc || 25,
+      typeCompte: client.typeCompte || "POSTPAYE",
       pays: paysClient?.value1 || pays[0]?.value1 || "",
       indicatifPays: paysClient?.value2 || pays[0]?.value2 || "",
       telephoneAvecIndicatif: paysClient?.value2 && numero ? `${paysClient.value2}${numero}` : ""
@@ -415,7 +418,7 @@ export default function ClientsPage() {
                 secteurActivite: formData.secteurActivite,
                 ville: formData.ville,
                 adresse: formData.adresse,
-                telephone: formData.telephoneAvecIndicatif, // Utiliser le numéro avec l'indicatif
+                telephone: formData.telephoneAvecIndicatif,
                 email: formData.email,
                 nif: formData.nif,
                 rccm: formData.rccm,
@@ -431,26 +434,78 @@ export default function ClientsPage() {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     Accept: "application/json",
-                    "Content-Type": "application/json",
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify(dataToSend)
-            })
+            });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                console.error('Erreur API:', errorData);
-                throw new Error(errorData.message || "Erreur lors de la création");
+                let errorMessage = "Erreur lors de la création du client";
+                let errorDetails: string | undefined;
+                let responseContent: any;
+
+                // D'abord, essayer de lire le contenu de la réponse
+                try {
+                    const responseText = await response.text();
+                    
+                    // Si la réponse est vide
+                    if (!responseText.trim()) {
+                        errorMessage = `Erreur ${response.status}: ${response.statusText || 'Aucun détail disponible'}`;
+                    } else {
+                        // Essayer de parser uniquement si ce n'est pas vide
+                        try {
+                            responseContent = JSON.parse(responseText);
+                            
+                            if (responseContent) {
+                                if (typeof responseContent === 'object') {
+                                    errorMessage = responseContent.message || errorMessage;
+                                    if (responseContent.errors) {
+                                        errorDetails = typeof responseContent.errors === 'string' 
+                                            ? responseContent.errors 
+                                            : Object.values(responseContent.errors).join(' ');
+                                    }
+                                } else if (typeof responseContent === 'string') {
+                                    errorMessage = responseContent || errorMessage;
+                                }
+                            }
+                        } catch (parseError) {
+                            // Si le parsing JSON échoue, utiliser le texte brut
+                            errorMessage = responseText || errorMessage;
+                        }
+                    }
+                } catch (readError) {
+                    console.error('Impossible de lire la réponse du serveur:', readError);
+                    errorMessage = `Erreur ${response.status}: Impossible de lire la réponse du serveur`;
+                }
+
+                // Afficher l'erreur avec Sonner
+                toast.error(errorMessage, {
+                    description: errorDetails,
+                    duration: 5000,
+                });
+                
+                return;
             }
 
-            const newClient = await response.json()
-            setClients(prevClients => [...prevClients, newClient])
-            closeCreateDialog()
-            toast.success("Client créé avec succès")
+            const newClient = await response.json();
+            setClients(prevClients => [...prevClients, newClient]);
+            closeCreateDialog();
+            
+            // Utilisation de toast.success de Sonner
+            toast.success("Client créé avec succès", {
+                description: `Le client ${newClient.raisonSociale || ''} a été ajouté avec succès`,
+                duration: 3000,
+            });
         } catch (error) {
-            console.error("Erreur lors de la création du client:", error)
-            toast.error(error instanceof Error ? error.message : "Une erreur s'est produite lors de la création")
+            console.error("Erreur lors de la création du client:", error);
+            if (!(error instanceof Error && error.message.includes("Erreur lors de la création"))) {
+                toast.error("Une erreur est survenue", {
+                    description: error instanceof Error ? error.message : "Veuillez réessayer plus tard",
+                    duration: 5000,
+                });
+            }
         }
-    }
+    };
 
     const handleManualRefresh = useCallback(() => {
         return loadClients(currentPage, pageSize)

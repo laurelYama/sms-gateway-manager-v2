@@ -107,6 +107,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))
           ) : table.getRowModel().rows?.length ? (
+            // Afficher les données
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
@@ -120,6 +121,7 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))
           ) : (
+            // Aucune donnée à afficher
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
                 Aucun résultat trouvé.

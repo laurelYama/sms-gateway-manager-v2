@@ -24,6 +24,7 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ mode, initialData, onSave, onClose, villes, secteurs, pays }: ClientFormProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1)
   // Pas de refs nécessaires pour le scroll natif
   // Fonction pour initialiser les données du formulaire
@@ -94,38 +95,52 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
     return re.test(email);
   };
 
-  const handleSubmit = () => {
-    // Validation de l'email
-    if (!validateEmail(formData.email)) {
-      toast.error("Veuillez entrer une adresse email valide");
-      return;
-    }
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Validation de l'email
+      if (!validateEmail(formData.email)) {
+        toast.error("Veuillez entrer une adresse email valide");
+        return;
+      }
 
-    // Validation de l'émetteur (si on est à l'étape 2)
-    if (step === 2 && !formData.emetteur) {
-      toast.error("Veuillez renseigner l'émetteur");
-      return;
+      // Validation de l'émetteur (si on est à l'étape 2)
+      if (step === 2 && !formData.emetteur) {
+        toast.error("Veuillez renseigner l'émetteur");
+        return;
+      }
+      
+      // Validation du numéro de téléphone
+      if (!formData.telephoneAvecIndicatif) {
+        toast.error("Veuillez renseigner un numéro de téléphone");
+        return;
+      }
+      
+      // Préparer les données pour l'envoi
+      const dataToSave = {
+        ...formData,
+        // S'assurer que le numéro est bien formaté
+        telephone: formData.telephoneAvecIndicatif.startsWith('+') 
+          ? formData.telephoneAvecIndicatif 
+          : `+${formData.telephoneAvecIndicatif}`.replace(/\s+/g, ''),
+        // S'assurer que l'email est en minuscules
+        email: formData.email.toLowerCase()
+      };
+      
+      console.log('Données à enregistrer:', dataToSave);
+      
+      // Appeler la fonction de sauvegarde
+      await onSave(dataToSave);
+      
+    } catch (error) {
+      console.error('Erreur lors de la soumission du formulaire:', error);
+      toast.error("Une erreur est survenue lors de la sauvegarde");
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // Validation du numéro de téléphone
-    if (!formData.telephoneAvecIndicatif) {
-      toast.error("Veuillez renseigner un numéro de téléphone");
-      return;
-    }
-    
-    // Préparer les données pour l'envoi
-    const dataToSave = {
-      ...formData,
-      // S'assurer que le numéro est bien formaté
-      telephone: formData.telephoneAvecIndicatif.startsWith('+') 
-        ? formData.telephoneAvecIndicatif 
-        : `+${formData.telephoneAvecIndicatif}`.replace(/\s+/g, ''),
-      // S'assurer que l'email est en minuscules
-      email: formData.email.toLowerCase()
-    };
-    
-    console.log('Données à enregistrer:', dataToSave);
-    onSave(dataToSave);
   }
 
   const handleClose = () => {
@@ -502,9 +517,21 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={handleSubmit}>
-              <Save className="h-4 w-4 mr-2" />
-              {mode === 'create' ? 'Créer' : 'Enregistrer'}
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {mode === 'create' ? 'Création...' : 'Enregistrement...'}
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {mode === 'create' ? 'Créer' : 'Enregistrer'}
+                </>
+              )}
             </Button>
           )}
         </div>

@@ -673,7 +673,24 @@ export default function FacturationPage() {
 
                             if (!response.ok) {
                                 const errorData = await response.json().catch(() => ({}));
-                                throw new Error(errorData.message || 'Erreur lors de la génération des factures');
+                                const errorMessage = errorData.message || 'Erreur lors de la génération des factures';
+                                
+                                // Gestion spécifique pour l'erreur d'exercice non trouvé
+                                if (errorMessage.includes('Exercice') && errorMessage.includes('non trouvé')) {
+                                    toast.error('Exercice non configuré', {
+                                        description: 'Veuillez configurer l\'exercice dans les paramètres avant de générer des factures.',
+                                        action: {
+                                            label: 'Paramètres',
+                                            onClick: () => {
+                                                // Rediriger vers la page des paramètres
+                                                window.location.href = '/dashboard/parametres';
+                                            }
+                                        }
+                                    });
+                                    return; // Ne pas lancer d'erreur supplémentaire
+                                }
+                                
+                                throw new Error(errorMessage);
                             }
 
                             const result = await response.json();

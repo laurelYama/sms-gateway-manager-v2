@@ -35,7 +35,7 @@ export const auditLogService = {
     if (!token) throw new Error('Non authentifié');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/audit-logs`, {
+      const response = await fetch(`${API_BASE_URL}/api/V1/audit-logs`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',

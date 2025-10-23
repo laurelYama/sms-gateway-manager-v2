@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Settings, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Settings, Calendar as CalendarIcon, FileText } from 'lucide-react';
 import { FooterForm } from './components/FooterForm';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { API_BASE_URL } from '@/lib/config';
 import { getToken } from '@/lib/auth';
+import { DocumentUploader } from './components/DocumentUploader';
 
 interface FooterData {
   companyName: string;
@@ -107,7 +108,14 @@ export default function ParametresPage() {
 
       <Tabs defaultValue="footer" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="footer">Pied de page</TabsTrigger>
+          <TabsTrigger value="footer" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            <span>Pied de page</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span>Documents</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="footer">
@@ -141,7 +149,9 @@ export default function ParametresPage() {
           </div>
         </TabsContent>
 
-        
+        <TabsContent value="documents" className="space-y-6">
+          <DocumentUploader />
+        </TabsContent>
       </Tabs>
 
       {/* Footer Form Modal */}

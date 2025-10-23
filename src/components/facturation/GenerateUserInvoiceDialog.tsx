@@ -114,12 +114,15 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
 
       if (!response.ok) {
         const errorMessage = responseData.message || `Erreur HTTP: ${response.status} ${response.statusText}`
-        console.error('Détails de l\'erreur:', {
-          status: response.status,
-          message: errorMessage,
-          details: responseData
-        })
-        throw new Error(errorMessage)
+        
+        // Afficher l'erreur avec un ID unique
+        toast.error(errorMessage, {
+          id: 'api-error-' + Date.now(),
+          description: response.status === 409 ? 'Veuillez configurer l\'exercice dans les paramètres.' : undefined
+        });
+        
+        // Ne pas lancer d'erreur pour éviter les doublons avec la gestion d'erreur globale
+        return;
       }
 
       // Vérifier si une facture existe déjà pour ce mois
@@ -134,8 +137,10 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
         toast.info('Aucune facture générée. Vérifiez les données du client pour ce mois.');
       }
     } catch (error) {
-      console.error('Erreur:', error)
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la génération de la facture')
+      // Ne pas afficher l'erreur ici car elle a déjà été affichée dans le bloc if (!response.ok)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Erreur lors de la génération de la facture:', error);
+      }
     } finally {
       setGenerating(false)
     }

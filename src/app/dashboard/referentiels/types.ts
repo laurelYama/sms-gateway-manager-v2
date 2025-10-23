@@ -1,5 +1,5 @@
 export interface Referentiel {
-  id?: number;
+  refID: number;
   keyValue: string;
   value1: string;
   value2: string;
@@ -8,6 +8,8 @@ export interface Referentiel {
   refCategory: string;
   createdAt?: string;
   updatedAt?: string;
+  // Propriété id maintenue pour la rétrocompatibilité
+  id?: number;
 }
 
 export interface ReferentielCategory {

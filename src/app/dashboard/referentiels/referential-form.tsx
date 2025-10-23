@@ -112,6 +112,8 @@ export function ReferentialForm({
       setIsLoading(true);
 
       if (initialData) {
+        console.log('Mise à jour du référentiel avec ID:', initialData.id);
+        console.log('Données du formulaire:', values);
         await updateReferential(initialData.id!, values);
         toast({
           title: 'Succès',
