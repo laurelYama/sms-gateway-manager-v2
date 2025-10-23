@@ -64,7 +64,7 @@ export default function ParametresPage() {
       return;
     }
     if (user?.role !== 'SUPER_ADMIN') {
-      toast({ title: 'Accès refusé', description: 'Réservé aux SUPER_ADMIN', variant: 'destructive' });
+      toast.error('Accès refusé - Réservé aux SUPER_ADMIN');
       router.push('/unauthorized');
       return;
     }
@@ -205,7 +205,7 @@ export default function ParametresPage() {
                 try {
                   const token = getToken();
                   if (!token) {
-                    toast({ title: 'Non authentifié', description: 'Veuillez vous reconnecter', variant: 'destructive' });
+                    toast.error('Non authentifié - Veuillez vous reconnecter');
                     return;
                   }
                   setCreating(true);
