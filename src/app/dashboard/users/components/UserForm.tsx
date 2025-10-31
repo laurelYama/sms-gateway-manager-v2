@@ -29,13 +29,13 @@ import * as SelectPrimitive from '@radix-ui/react-select'
 // Les indicatifs seront chargés depuis l'API
 
 const formSchema = z.object({
-  nomManager: z.string().min(2, 'Le nom est requis'),
-  prenomManager: z.string().min(2, 'Le prénom est requis'),
-  email: z.string().email('Email invalide'),
-  indicatif: z.string().min(1, 'Indicatif requis'),
+  nomManager: z.string().min(2, 'El apellido es obligatorio'),
+  prenomManager: z.string().min(2, 'El nombre es obligatorio'),
+  email: z.string().email('Correo electrónico inválido'),
+  indicatif: z.string().min(1, 'Código de país requerido'),
   numeroTelephoneManager: z.string()
-    .min(8, 'Numéro de téléphone invalide')
-    .regex(/^[0-9]+$/, 'Le numéro ne doit contenir que des chiffres'),
+    .min(8, 'Número de teléfono inválido')
+    .regex(/^[0-9]+$/, 'El número solo debe contener dígitos'),
   role: z.enum(['ADMIN', 'SUPER_ADMIN', 'AUDITEUR']),
   password: z.string().optional(),
 })
@@ -137,9 +137,9 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
             name="prenomManager"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Prénom</FormLabel>
+                <FormLabel>Nombre</FormLabel>
                 <FormControl>
-                  <Input placeholder="Prénom" {...field} />
+                  <Input placeholder="Nombre" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -150,9 +150,9 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
             name="nomManager"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nom</FormLabel>
+                <FormLabel>Apellido</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nom" {...field} />
+                  <Input placeholder="Apellido" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -165,9 +165,9 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Correo electrónico</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="email@exemple.com" {...field} />
+                <Input type="email" placeholder="correo@ejemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -180,11 +180,11 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
             name="indicatif"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Indicatif</FormLabel>
+                <FormLabel>Código de país</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un indicatif" />
+                        <SelectValue placeholder="Seleccionar código de país" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -193,7 +193,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
                           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                           <Input
                             type="search"
-                            placeholder="Rechercher un pays..."
+                            placeholder="Buscar un país..."
                             className="pl-8 h-9 w-full"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -228,7 +228,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
             name="numeroTelephoneManager"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Numéro de téléphone</FormLabel>
+                <FormLabel>Número de teléfono</FormLabel>
                 <FormControl>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none bg-gray-100 rounded-l-md border-r border-gray-300">
@@ -254,17 +254,17 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Rôle</FormLabel>
+              <FormLabel>Rol</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un rôle" />
+                    <SelectValue placeholder="Seleccionar un rol" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem key="super-admin" value="SUPER_ADMIN">Super Administrateur</SelectItem>
-                  <SelectItem key="admin" value="ADMIN">Administrateur</SelectItem>
-                  <SelectItem key="auditeur" value="AUDITEUR">Auditeur</SelectItem>
+                  <SelectItem key="super-admin" value="SUPER_ADMIN">Super Administrador</SelectItem>
+                  <SelectItem key="admin" value="ADMIN">Administrador</SelectItem>
+                  <SelectItem key="auditeur" value="AUDITEUR">Auditor</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -275,7 +275,7 @@ export function UserForm({ initialData, onSubmit, loading, isEditing = false }: 
         {!isEditing && (
           <div className="p-4 bg-blue-50 rounded-md">
             <p className="text-sm text-blue-700">
-              Le mot de passe sera généré automatiquement et envoyé par email à l&apos;utilisateur.
+              La contraseña se generará automáticamente y se enviará por correo electrónico al usuario.
             </p>
           </div>
         )}

@@ -139,17 +139,17 @@ export function DataTable<TData, TValue>({
             {totalElements > 0 ? (
               <>
                 <span className="font-medium">{startItem}-{endItem}</span>
-                <span className="text-gray-500"> sur </span>
+                <span className="text-gray-500"> de </span>
                 <span className="font-semibold">{totalElements}</span>
               </>
             ) : (
-              <span>0 élément</span>
+              <span>0 elementos</span>
             )}
           </div>
           
           <div className="flex items-center gap-2 w-full xs:w-auto">
             <p className="text-sm text-gray-600 whitespace-nowrap text-right xs:text-left">
-              Lignes/page :
+              Líneas/página:
             </p>
             <Select
               value={`${pageSize}`}
@@ -172,7 +172,7 @@ export function DataTable<TData, TValue>({
         {/* Ligne du bas - Navigation */}
         <div className="flex items-center justify-between px-3 py-2">
           <div className="text-sm font-medium text-gray-700">
-            Page {currentPage + 1} sur {Math.max(1, totalPages)}
+            Página {currentPage + 1} de {Math.max(1, totalPages)}
           </div>
           
           <div className="flex items-center gap-1">
@@ -182,7 +182,7 @@ export function DataTable<TData, TValue>({
               className="h-8 w-8 p-0 border-gray-300 hover:bg-gray-100"
               onClick={() => onPageChange(0)}
               disabled={currentPage === 0 || isLoading}
-              title="Première page"
+              title="Primera página"
             >
               <ChevronsLeft className="h-4 w-4" />
             </Button>
@@ -192,7 +192,7 @@ export function DataTable<TData, TValue>({
               className="h-8 w-8 p-0 border-gray-300 hover:bg-gray-100"
               onClick={() => onPageChange(Math.max(0, currentPage - 1))}
               disabled={currentPage === 0 || isLoading}
-              title="Page précédente"
+              title="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -203,7 +203,7 @@ export function DataTable<TData, TValue>({
               className="h-8 w-8 p-0 border-gray-300 hover:bg-gray-100"
               onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
               disabled={currentPage >= totalPages - 1 || isLoading}
-              title="Page suivante"
+              title="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -213,7 +213,7 @@ export function DataTable<TData, TValue>({
               className="h-8 w-8 p-0 border-gray-300 hover:bg-gray-100"
               onClick={() => onPageChange(totalPages - 1)}
               disabled={currentPage >= totalPages - 1 || isLoading}
-              title="Dernière page"
+              title="Última página"
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

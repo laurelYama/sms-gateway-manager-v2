@@ -3,14 +3,14 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-// Formatage de date personnalisé pour le français
+// Formato de fecha personalizado para español
 const formatMonth = (month: number) => {
     const date = new Date(2000, month - 1, 1);
-    return new Intl.DateTimeFormat('fr-FR', { month: 'long' }).format(date);
+    return new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(date);
 };
 
 const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('fr-FR', { 
+    return new Intl.DateTimeFormat('es-ES', { 
         year: 'numeric', 
         month: 'long' 
     }).format(date);
@@ -56,16 +56,16 @@ export function GenerationFactureDialog({
             <DialogContent>
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>Générer les factures</DialogTitle>
+                        <DialogTitle>Generar facturas</DialogTitle>
                         <DialogDescription>
-                            Générez les factures pour une période spécifique.
+                            Genere facturas para un período específico.
                         </DialogDescription>
                     </DialogHeader>
                     
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="annee" className="text-right">
-                                Année
+                                Año
                             </Label>
                             <Input
                                 id="annee"
@@ -80,7 +80,7 @@ export function GenerationFactureDialog({
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label htmlFor="mois" className="text-right">
-                                Mois
+                                Mes
                             </Label>
                             <select
                                 id="mois"
@@ -97,7 +97,7 @@ export function GenerationFactureDialog({
                             </select>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            <p>Période sélectionnée : {formatDate(new Date(params.annee, params.mois - 1, 1))}</p>
+                            <p>Período seleccionado: {formatDate(new Date(params.annee, params.mois - 1, 1))}</p>
                             {params.annee > currentYear || (params.annee === currentYear && params.mois > currentMonth) ? (
                                 <p className="text-yellow-600 mt-1">
                                     Attention : Vous êtes en train de générer des factures pour une période future.
@@ -107,16 +107,11 @@ export function GenerationFactureDialog({
                     </div>
                     
                     <DialogFooter>
-                        <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => onOpenChange(false)}
-                            disabled={loading}
-                        >
-                            Annuler
+                        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                            Cancelar
                         </Button>
                         <Button type="submit" disabled={loading}>
-                            {loading ? 'Génération en cours...' : 'Générer les factures'}
+                            {loading ? 'Generando...' : 'Generar'}
                         </Button>
                     </DialogFooter>
                 </form>

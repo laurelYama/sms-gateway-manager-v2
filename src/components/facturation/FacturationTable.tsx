@@ -3,20 +3,30 @@ import { Button } from "@/components/ui/button"
 import { Download, Send, Eye, MoreHorizontal, ChevronDown, ChevronUp } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useState } from "react"
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale/es'
+import { format as tzFormat, toZonedTime } from 'date-fns-tz'
 
-// Formatage de date personnalisé pour le français
+// Formato de fecha personalizado para español
 const formatDate = (date: Date | string) => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return new Intl.DateTimeFormat('fr-FR', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
-    }).format(d);
+    try {
+        const d = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return 'Fecha inválida';
+        const timeZone = 'Africa/Malabo';
+        const zonedDate = toZonedTime(d, timeZone);
+        return tzFormat(zonedDate, 'dd MMM yyyy', { 
+            timeZone,
+            locale: es 
+        });
+    } catch (error) {
+        console.error('Error al formatear la fecha:', error);
+        return 'Error de fecha';
+    }
 }
 
-// Formatage monétaire
+// Formato monetario
 const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat('es-ES', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0
     }).format(amount);
@@ -57,19 +67,19 @@ const MobileFactureRow = ({ facture, onPreview, onDownload, onSend, sending }: {
                 <div className="space-y-2 pt-2 border-t">
                     <div className="grid grid-cols-2 gap-2">
                         <div className="text-sm">
-                            <div className="text-muted-foreground">Consommation</div>
+                            <div className="text-muted-foreground">Consumo</div>
                             <div>{facture.consommationSms} SMS</div>
                         </div>
                         <div className="text-sm">
-                            <div className="text-muted-foreground">Prix unitaire</div>
+                            <div className="text-muted-foreground">Precio unitario</div>
                             <div>{formatMoney(facture.prixUnitaire)} FCFA</div>
                         </div>
                         <div className="text-sm">
-                            <div className="text-muted-foreground">Montant</div>
+                            <div className="text-muted-foreground">Monto</div>
                             <div className="font-medium">{formatMoney(facture.montant)} FCFA</div>
                         </div>
                         <div className="text-sm">
-                            <div className="text-muted-foreground">Statut</div>
+                            <div className="text-muted-foreground">Estado</div>
                             <div className="capitalize">{facture.statut.toLowerCase()}</div>
                         </div>
                     </div>
@@ -81,7 +91,7 @@ const MobileFactureRow = ({ facture, onPreview, onDownload, onSend, sending }: {
                             className="flex-1"
                             onClick={() => onPreview(facture.id)}
                         >
-                            <Eye className="h-4 w-4 mr-2" /> Voir
+                            <Eye className="h-4 w-4 mr-2" /> Ver factura
                         </Button>
                         <Button 
                             variant="outline" 
@@ -89,7 +99,7 @@ const MobileFactureRow = ({ facture, onPreview, onDownload, onSend, sending }: {
                             className="flex-1"
                             onClick={() => onDownload(facture.id)}
                         >
-                            <Download className="h-4 w-4 mr-2" /> PDF
+                            <Download className="h-4 w-4 mr-2" /> Descargar
                         </Button>
                         <Button 
                             variant="outline" 
@@ -103,7 +113,7 @@ const MobileFactureRow = ({ facture, onPreview, onDownload, onSend, sending }: {
                             ) : (
                                 <Send className="h-4 w-4 mr-2" />
                             )}
-                            Envoyer
+                            Enviar
                         </Button>
                     </div>
                 </div>
@@ -136,7 +146,7 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
     if (factures.length === 0) {
         return (
             <div className="text-center py-12 border rounded-lg">
-                <p className="text-muted-foreground">Aucune facture trouvée</p>
+                <p className="text-muted-foreground">No se encontraron facturas</p>
             </div>
         )
     }
@@ -166,13 +176,13 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="whitespace-nowrap">ID facture</TableHead>
-                            <TableHead className="min-w-[180px]">Client</TableHead>
-                            <TableHead className="min-w-[180px]">Période</TableHead>
-                            <TableHead className="whitespace-nowrap">Consommation</TableHead>
-                            <TableHead className="whitespace-nowrap">Prix unitaire</TableHead>
-                            <TableHead className="whitespace-nowrap">Montant</TableHead>
-                            <TableHead className="w-40 text-right">Actions</TableHead>
+                            <TableHead className="whitespace-nowrap">ID Factura</TableHead>
+                            <TableHead className="min-w-[180px]">Cliente</TableHead>
+                            <TableHead className="min-w-[180px]">Período</TableHead>
+                            <TableHead className="whitespace-nowrap">Consumo</TableHead>
+                            <TableHead className="whitespace-nowrap">Precio unitario</TableHead>
+                            <TableHead className="whitespace-nowrap">Monto</TableHead>
+                            <TableHead className="w-40 text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -192,37 +202,31 @@ export function FacturationTable({ factures, onPreview, onDownload, onSend, load
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" className="h-8 w-8 p-0">
-                                                <span className="sr-only">Ouvrir le menu</span>
+                                                <span className="sr-only">Abrir menú</span>
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                            <DropdownMenuItem 
-                                                onClick={() => onPreview(facture.id)}
-                                                className="cursor-pointer"
-                                            >
+                                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                            <DropdownMenuItem onClick={() => onPreview(facture.id)}>
                                                 <Eye className="mr-2 h-4 w-4" />
-                                                Prévisualiser
+                                                <span>Ver factura</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem 
-                                                onClick={() => onDownload(facture.id)}
-                                                className="cursor-pointer"
-                                            >
+                                            <DropdownMenuItem onClick={() => onDownload(facture.id)}>
                                                 <Download className="mr-2 h-4 w-4" />
-                                                Télécharger
+                                                <span>Descargar</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem 
                                                 onClick={() => onSend(facture.id)}
                                                 disabled={facture.statut === 'ENVOYEE' || facture.statut === 'PAYEE' || sending[facture.id]}
-                                                className="cursor-pointer"
+                                                className="text-destructive"
                                             >
                                                 {sending[facture.id] ? (
-                                                    <div className="mr-2 h-4 w-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                                                    <div className="h-4 w-4 animate-spin border-2 border-primary border-t-transparent rounded-full mr-2" />
                                                 ) : (
                                                     <Send className="mr-2 h-4 w-4" />
                                                 )}
-                                                Envoyer
+                                                <span>Enviar</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>

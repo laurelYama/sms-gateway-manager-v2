@@ -18,7 +18,7 @@ export function FacturationActions({
         <div className="flex flex-wrap gap-2 mb-4">
             <Button onClick={onGenerate} disabled={loading}>
                 <Plus className="mr-2 h-4 w-4" />
-                Générer les factures
+                Generar facturas
             </Button>
         </div>
     )

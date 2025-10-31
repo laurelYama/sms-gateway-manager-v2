@@ -147,18 +147,18 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
   }
 
   const months = [
-    { value: '01', label: 'Janvier' },
-    { value: '02', label: 'Février' },
-    { value: '03', label: 'Mars' },
-    { value: '04', label: 'Avril' },
-    { value: '05', label: 'Mai' },
-    { value: '06', label: 'Juin' },
-    { value: '07', label: 'Juillet' },
-    { value: '08', label: 'Août' },
-    { value: '09', label: 'Septembre' },
-    { value: '10', label: 'Octobre' },
-    { value: '11', label: 'Novembre' },
-    { value: '12', label: 'Décembre' },
+    { value: '01', label: 'Enero' },
+    { value: '02', label: 'Febrero' },
+    { value: '03', label: 'Marzo' },
+    { value: '04', label: 'Abril' },
+    { value: '05', label: 'Mayo' },
+    { value: '06', label: 'Junio' },
+    { value: '07', label: 'Julio' },
+    { value: '08', label: 'Agosto' },
+    { value: '09', label: 'Septiembre' },
+    { value: '10', label: 'Octubre' },
+    { value: '11', label: 'Noviembre' },
+    { value: '12', label: 'Diciembre' },
   ]
 
   const years = Array.from({ length: 5 }, (_, i) => year - 2 + i)
@@ -167,20 +167,20 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Générer une facture client</DialogTitle>
+          <DialogTitle>Generar factura de cliente</DialogTitle>
           <DialogDescription>
-            Sélectionnez un client et la période pour générer une facture.
+            Seleccione un cliente y el período para generar una factura.
           </DialogDescription>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="client" className="text-right">
-              Client
+              Cliente
             </Label>
             <Select value={selectedClient} onValueChange={setSelectedClient}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Sélectionnez un client" />
+                <SelectValue placeholder="Seleccione un cliente" />
               </SelectTrigger>
               <SelectContent>
                 {loading ? (
@@ -202,11 +202,11 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="month" className="text-right">
-              Mois
+              Mes
             </Label>
             <Select value={month} onValueChange={setMonth}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Sélectionnez un mois" />
+                <SelectValue placeholder="Seleccione un mes" />
               </SelectTrigger>
               <SelectContent>
                 {months.map(m => (
@@ -220,11 +220,11 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="year" className="text-right">
-              Année
+              Año
             </Label>
             <Select value={year.toString()} onValueChange={(value) => setYear(parseInt(value))}>
               <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Sélectionnez une année" />
+                <SelectValue placeholder="Seleccione un año" />
               </SelectTrigger>
               <SelectContent>
                 {years.map(y => (
@@ -244,7 +244,7 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
             onClick={() => onOpenChange(false)}
             disabled={generating}
           >
-            Annuler
+            Cancelar
           </Button>
           <Button 
             type="button" 
@@ -252,7 +252,7 @@ export function GenerateUserInvoiceDialog({ open, onOpenChange, onSuccess, token
             disabled={!selectedClient || generating}
           >
             {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Générer la facture
+            Generar factura
           </Button>
         </DialogFooter>
       </DialogContent>

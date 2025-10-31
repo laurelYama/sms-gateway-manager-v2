@@ -70,15 +70,15 @@ export function UsersTable({
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'SUPER_ADMIN':
-                return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Super Admin</Badge>
+                return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">Super Administrador</Badge>
             case 'ADMIN':
-                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Administrateur</Badge>
+                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Administrador</Badge>
             case 'MANAGER':
-                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Gestionnaire</Badge>
+                return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Gestor</Badge>
             case 'AUDITEUR':
-                return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Auditeur</Badge>
+                return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Auditor</Badge>
             default:
-                return <Badge variant="outline">{role || 'Non défini'}</Badge>
+                return <Badge variant="outline">{role || 'No definido'}</Badge>
         }
     }
 
@@ -88,18 +88,22 @@ export function UsersTable({
         
         switch (status?.toUpperCase()) {
             case 'ACTIF':
-                return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Actif</Badge>
+            case 'ACTIVO':
+                return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Activo</Badge>
             case 'SUSPENDU':
-                return <Badge variant="destructive">Suspendu</Badge>
+            case 'SUSPENDIDO':
+                return <Badge variant="destructive">Suspendido</Badge>
             case 'ARCHIVE':
             case 'ARCHIVÉ':
-                return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">Archivé</Badge>
+            case 'ARCHIVADO':
+                return <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">Archivado</Badge>
             case 'INACTIF':
-                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Inactif</Badge>
+            case 'INACTIVO':
+                return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Inactivo</Badge>
             default:
                 return status 
                     ? <Badge variant="outline">{status}</Badge>
-                    : <Badge variant="outline">Inconnu</Badge>
+                    : <Badge variant="outline">Desconocido</Badge>
         }
     }
     
@@ -135,25 +139,25 @@ export function UsersTable({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Téléphone</TableHead>
-                        <TableHead>Rôle</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="w-40">Actions</TableHead>
+                        <TableHead>Nombre</TableHead>
+                        <TableHead>Correo electrónico</TableHead>
+                        <TableHead>Teléfono</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="w-40">Acciones</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading && managers.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={6} className="text-center py-8">
-                                <p>Chargement des utilisateurs...</p>
+                                <p>Cargando usuarios...</p>
                             </TableCell>
                         </TableRow>
                     ) : managers.length === 0 ? (
                         <TableRow>
                             <TableCell colSpan={6} className="text-center py-8">
-                                <p className="text-muted-foreground">Aucun utilisateur trouvé</p>
+                                <p className="text-muted-foreground">No se encontraron usuarios</p>
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -169,19 +173,19 @@ export function UsersTable({
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Ouvrir le menu</span>
+                                                    <span className="sr-only">Abrir menú</span>
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                                 {canEdit(currentUser) && (
                                                     <DropdownMenuItem 
                                                         onClick={() => onEdit(manager.idManager)}
                                                         className="cursor-pointer"
                                                     >
                                                         <Edit className="mr-2 h-4 w-4" />
-                                                        Modifier
+                                                        Editar
                                                     </DropdownMenuItem>
                                                 )}
                                                 
@@ -191,7 +195,7 @@ export function UsersTable({
                                                         className="cursor-pointer text-amber-600"
                                                     >
                                                         <Pause className="mr-2 h-4 w-4" />
-                                                        Suspendre
+                                                        Suspender
                                                     </DropdownMenuItem>
                                                 ) : canSuspend(currentUser) && !isUserActive(manager) ? (
                                                     <DropdownMenuItem 
@@ -199,7 +203,7 @@ export function UsersTable({
                                                         className="cursor-pointer text-green-600"
                                                     >
                                                         <Play className="mr-2 h-4 w-4" />
-                                                        Activer
+                                                        Activar
                                                     </DropdownMenuItem>
                                                 ) : null}
                                                 
@@ -209,7 +213,7 @@ export function UsersTable({
                                                         className="cursor-pointer text-blue-600"
                                                     >
                                                         <Archive className="mr-2 h-4 w-4" />
-                                                        Archiver
+                                                        Archivar
                                                     </DropdownMenuItem>
                                                 )}
                                             </DropdownMenuContent>
@@ -231,8 +235,8 @@ export function UsersTable({
                 <div className="flex items-center space-x-2">
                     <p className="text-sm text-muted-foreground">
                         {totalElements > 0 
-                            ? `${(currentPage * pageSize) + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} sur ${totalElements} utilisateur(s)`
-                            : 'Aucun utilisateur trouvé'}
+                            ? `${(currentPage * pageSize) + 1}-${Math.min((currentPage + 1) * pageSize, totalElements)} de ${totalElements} usuario(s)`
+                            : 'No se encontraron usuarios'}
                     </p>
                     
                     <Select
@@ -250,7 +254,7 @@ export function UsersTable({
                             ))}
                         </SelectContent>
                     </Select>
-                    <p className="text-sm text-muted-foreground">par page</p>
+                    <p className="text-sm text-muted-foreground">por página</p>
                 </div>
                 
                 <div className="flex items-center space-x-2">
@@ -260,7 +264,7 @@ export function UsersTable({
                         onClick={() => onPageChange(0)}
                         disabled={currentPage === 0}
                     >
-                        <span className="sr-only">Aller à la première page</span>
+                        <span className="sr-only">Ir a la primera página</span>
                         <ChevronsLeft className="h-4 w-4" />
                     </Button>
                     <Button
@@ -269,7 +273,7 @@ export function UsersTable({
                         onClick={() => onPageChange(currentPage - 1)}
                         disabled={currentPage === 0}
                     >
-                        <span className="sr-only">Page précédente</span>
+                        <span className="sr-only">Página anterior</span>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     
@@ -292,7 +296,7 @@ export function UsersTable({
                         onClick={() => onPageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages - 1 || loading}
                     >
-                        <span className="sr-only">Page suivante</span>
+                        <span className="sr-only">Página siguiente</span>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                     <Button
@@ -301,7 +305,7 @@ export function UsersTable({
                         onClick={() => onPageChange(totalPages - 1)}
                         disabled={currentPage >= totalPages - 1 || loading}
                     >
-                        <span className="sr-only">Aller à la dernière page</span>
+                        <span className="sr-only">Ir a la última página</span>
                         <ChevronsRight className="h-4 w-4" />
                     </Button>
                 </div>

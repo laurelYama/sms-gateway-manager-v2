@@ -29,12 +29,12 @@ import { Referentiel, ReferentielFormData, REFERENTIEL_CATEGORIES } from './type
 import { createReferential, updateReferential, getCategories } from '@/lib/api/referentials';
 
 const formSchema = z.object({
-  keyValue: z.string().min(1, 'La clé est requise'),
-  value1: z.string().min(1, 'La valeur 1 est requise'),
+  keyValue: z.string().min(1, 'La clave es requerida'),
+  value1: z.string().min(1, 'El valor 1 es requerido'),
   value2: z.string(),
   value3: z.string(),
   value4: z.string(),
-  refCategory: z.string().min(1, 'La catégorie est requise'),
+  refCategory: z.string().min(1, 'La categoría es requerida'),
 });
 
 interface ReferentialFormProps {
@@ -152,12 +152,12 @@ export function ReferentialForm({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? 'Modifier le référentiel' : 'Nouveau référentiel'}
+            {initialData ? 'Modificar referencia' : 'Añadir referencia'}
           </DialogTitle>
           <DialogDescription>
             {initialData
-              ? 'Modifiez les détails du référentiel.'
-              : 'Remplissez les champs pour créer un nouveau référentiel.'}
+              ? 'Modifique los detalles de la referencia.'
+              : 'Complete los campos para agregar una nueva referencia.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -169,9 +169,9 @@ export function ReferentialForm({
                 name="keyValue"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Clé *</FormLabel>
+                    <FormLabel>Clave</FormLabel>
                     <FormControl>
-                      <Input placeholder="Entrez la clé" {...field} />
+                      <Input placeholder="Ingrese la clave" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,12 +183,12 @@ export function ReferentialForm({
                 name="refCategory"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Catégorie *</FormLabel>
+                    <FormLabel>Categoría</FormLabel>
                     <select
                       className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                       {...field}
                     >
-                      <option value="">Sélectionnez une catégorie</option>
+                      <option value="">Seleccione una categoría</option>
                       {availableCategories.map((category) => (
                         <option key={category.code} value={category.code}>
                           {category.label}
@@ -205,9 +205,9 @@ export function ReferentialForm({
                 name="value1"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valeur 1 *</FormLabel>
+                    <FormLabel>Valor 1</FormLabel>
                     <FormControl>
-                      <Input placeholder="Entrez la valeur 1" {...field} />
+                      <Input placeholder="Ingrese el valor 1" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -219,9 +219,9 @@ export function ReferentialForm({
                 name="value2"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valeur 2</FormLabel>
+                    <FormLabel>Valor 2</FormLabel>
                     <FormControl>
-                      <Input placeholder="Entrez la valeur 2" {...field} />
+                      <Input placeholder="Ingrese el valor 2" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -233,9 +233,9 @@ export function ReferentialForm({
                 name="value3"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valeur 3</FormLabel>
+                    <FormLabel>Valor 3</FormLabel>
                     <FormControl>
-                      <Input placeholder="Entrez la valeur 3" {...field} />
+                      <Input placeholder="Ingrese el valor 3" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -247,9 +247,9 @@ export function ReferentialForm({
                 name="value4"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valeur 4</FormLabel>
+                    <FormLabel>Valor 4</FormLabel>
                     <FormControl>
-                      <Input placeholder="Entrez la valeur 4" {...field} />
+                      <Input placeholder="Ingrese el valor 4" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -263,13 +263,19 @@ export function ReferentialForm({
                 onClick={() => onOpenChange(false)}
                 disabled={isLoading}
               >
-                Annuler
+                Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : initialData ? (
+                  'Actualizar'
+                ) : (
+                  'Añadir'
                 )}
-                {initialData ? 'Mettre à jour' : 'Créer'}
               </Button>
             </DialogFooter>
           </form>

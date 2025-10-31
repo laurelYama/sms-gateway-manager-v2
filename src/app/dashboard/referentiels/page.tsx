@@ -159,22 +159,22 @@ export default function ReferentielsPage() {
     
     // Afficher une notification de succès
     if (isNew) {
-      toast.success("Le référentiel a été ajouté avec succès");
+      toast.success("La referencia ha sido añadida con éxito");
     } else {
-      toast.success("Le référentiel a été mis à jour avec succès");
+      toast.success("La referencia ha sido actualizada con éxito");
     }
   };
 
   return (
     <div className="container mx-auto py-10">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Gestion des Référentiels</h1>
+        <h1 className="text-2xl font-bold">Gestor de Referencias</h1>
         <Button onClick={() => {
           setEditingReferentiel(null);
           setIsFormOpen(true);
         }}>
           <Plus className="mr-2 h-4 w-4" />
-          Ajouter un référentiel
+          Añadir una referencia
         </Button>
       </div>
 
@@ -182,7 +182,7 @@ export default function ReferentielsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Rechercher un référentiel..."
+            placeholder="Buscar una referencia..."
             className="pl-10"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -197,10 +197,10 @@ export default function ReferentielsPage() {
           }}
         >
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Toutes les catégories" />
+            <SelectValue placeholder="Todas las categorías" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Toutes les catégories</SelectItem>
+            <SelectItem value="all">Todas las categorías</SelectItem>
             {availableCategories.map(category => (
               <SelectItem key={category} value={category}>
                 {REFERENTIEL_CATEGORIES[category] || category}

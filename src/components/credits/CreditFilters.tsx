@@ -18,13 +18,13 @@ export function CreditFilters({
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 className="text-3xl font-bold">Commandes de SMS</h1>
-        <p className="text-gray-600">Compte prépayé</p>
+        <h1 className="text-3xl font-bold">Pedidos de SMS</h1>
+        <p className="text-gray-600">Cuenta prepago</p>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Statut :</span>
+          <span className="text-sm text-muted-foreground">Estado:</span>
           <Select
             value={statusFilter}
             onValueChange={onStatusFilterChange}
@@ -33,10 +33,10 @@ export function CreditFilters({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">Tous</SelectItem>
-              <SelectItem value="PENDING">En attente</SelectItem>
-              <SelectItem value="APPROVED">Approuvés</SelectItem>
-              <SelectItem value="REJECTED">Rejetés</SelectItem>
+              <SelectItem value="ALL">Todos</SelectItem>
+              <SelectItem value="PENDING">Pendientes</SelectItem>
+              <SelectItem value="APPROVED">Aprobados</SelectItem>
+              <SelectItem value="REJECTED">Rechazados</SelectItem>
             </SelectContent>
           </Select>
         </div>

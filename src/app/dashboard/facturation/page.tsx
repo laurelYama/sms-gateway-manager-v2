@@ -527,8 +527,8 @@ export default function FacturationPage() {
             <div className="space-y-4 sm:space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                     <div className="space-y-1 sm:space-y-2">
-                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestion de la Facturation</h1>
-                        <p className="text-sm sm:text-base text-muted-foreground">Compte postpayé</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gestión de la Facturación</h1>
+                        <p className="text-sm sm:text-base text-muted-foreground">Cuenta pospago</p>
                     </div>
                     <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                         <Button 
@@ -538,7 +538,7 @@ export default function FacturationPage() {
                             disabled={loading}
                         >
                             <Download className="mr-2 h-4 w-4" />
-                            {loading ? 'Chargement...' : 'Générer une facture'}
+                            {loading ? 'Cargando...' : 'Generar una factura'}
                         </Button>
                         <div className="w-full sm:w-auto">
                 <CalendrierButton 
@@ -694,7 +694,7 @@ export default function FacturationPage() {
                             }
 
                             const result = await response.json();
-                            toast.success(`${result.generated} facture(s) générée(s) avec succès`);
+                            toast.success(`${result.generated} factura(s) generada(s) con éxito`);
                             
                             // Recharger les données
                             await Promise.all([

@@ -60,18 +60,18 @@ export function CalendrierButton({
       <DialogTrigger asChild>
         <Button variant="outline" className="ml-auto" disabled={loading}>
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {loading ? 'Chargement...' : 'Afficher le calendrier'}
+          {loading ? 'Cargando...' : 'Mostrar calendario'}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl sm:max-w-4xl p-0">
         <DialogHeader className="flex-row items-center justify-between px-6 pt-6">
-          <DialogTitle>Calendrier de facturation</DialogTitle>
+          <DialogTitle>Calendario de facturación</DialogTitle>
         </DialogHeader>
         <div className="px-6 pb-6 pt-2 max-h-[80vh] overflow-y-auto">
           {localLoading || loading ? (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
               <Skeleton className="h-8 w-8 rounded-full" />
-              <p className="text-sm text-muted-foreground">Chargement du calendrier...</p>
+              <p className="text-sm text-muted-foreground">Cargando calendario...</p>
             </div>
           ) : (
             <CalendrierFacturation 

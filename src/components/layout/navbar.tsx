@@ -101,7 +101,7 @@ export function Navbar() {
     }, [router, pathname])
 
     const getInitials = (name: string) => {
-        if (!name) return "US"
+        if (!name) return "US" // Iniciales por defecto
         return name
             .split(' ')
             .map(part => part.charAt(0))
@@ -113,10 +113,10 @@ export function Navbar() {
     const getRoleDisplay = (role: unknown) => {
         if (!role) return 'Utilisateur';
 
-        // narrow role to possible shapes: string | { role?: string } | array
+        // convertir el rol a un formato manejable: string | { role?: string } | array
         let roleValue: unknown = role;
         if (typeof roleValue === 'object' && roleValue !== null) {
-            // try common properties
+            // intentar con propiedades comunes
             const rv = roleValue as { role?: unknown; authority?: unknown };
             if (rv.role) roleValue = rv.role;
             else if (rv.authority) roleValue = rv.authority;
@@ -129,11 +129,11 @@ export function Navbar() {
         const roleStr = String(roleValue ?? '').trim().toUpperCase();
 
         const roles: Record<string, string> = {
-            'ADMIN': 'Administrateur',
-            'SUPER_ADMIN': 'Super Administrateur',
-            'ROLE_SUPER_ADMIN': 'Super Administrateur',
-            'ROLE_ADMIN': 'Administrateur',
-            'ROLE_USER': 'Utilisateur'
+            'ADMIN': 'Administrador',
+            'SUPER_ADMIN': 'Super Administrador',
+            'ROLE_SUPER_ADMIN': 'Super Administrador',
+            'ROLE_ADMIN': 'Administrador',
+            'ROLE_USER': 'Usuario'
         };
 
         if (roles[roleStr]) return roles[roleStr];
@@ -142,14 +142,14 @@ export function Navbar() {
             if (roleStr.includes(key) || key.includes(roleStr)) return value;
         }
 
-        return roleStr || 'Utilisateur';
+        return roleStr || 'Usuario';
     }
 
 
     return (
         <header className="w-full bg-white shadow-sm">
             <div className="flex h-16 items-center justify-between px-6 w-full">
-                {/* Logo ou titre de l'application */}
+                {/* Logo o título de la aplicación */}
                 <div className="flex items-center">
                     <h1 className="text-xl font-bold text-[#0072BB]">SMS Gateway Manager</h1>
                 </div>
@@ -163,9 +163,9 @@ export function Navbar() {
                             <Avatar className="h-8 w-8">
                                 <AvatarImage
                                     src="/logo.png"
-                                    alt={userData?.nom || "Utilisateur"}
+                                    alt={userData?.nom || "Usuario"}
                                     onError={(e) => {
-                                        // Fallback si l'image ne charge pas
+                                        // Respaldo si la imagen no se carga
                                         e.currentTarget.style.display = 'none'
                                     }}
                                 />
@@ -175,21 +175,21 @@ export function Navbar() {
                             </Avatar>
                             <div className="hidden md:flex flex-col items-start">
                                 <span className="text-sm font-medium">
-                                    {userData?.nom || "Utilisateur"}
+                                    {userData?.nom || "Usuario"}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                    {userData?.role ? getRoleDisplay(userData.role) : "Utilisateur"}
+                                    {userData?.role ? getRoleDisplay(userData.role) : "Usuario"}
                                 </span>
                             </div>
                         </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+                        <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                         <DropdownMenuSeparator />
 
                         {/* Email de l'utilisateur */}
                         {userData?.sub && (
-                            <div className="px-2 py-1.5 text-sm text-gray-600">
+                            <div className="px-2 py-1.5 text-sm text-gray-500">
                                 {userData.sub}
                             </div>
                         )}
@@ -199,7 +199,7 @@ export function Navbar() {
                           onClick={() => router.push('/dashboard/profil')}
                         >
                             <User className="mr-2 h-4 w-4" />
-                            <span>Profil</span>
+                            <span>Perfil</span>
                         </DropdownMenuItem>
 
                         {/* Statut d'abonnement */}
@@ -208,13 +208,13 @@ export function Navbar() {
                                 <DropdownMenuSeparator />
                                 <div className="px-2 py-1.5 text-sm">
                                     <div className="flex items-center justify-between">
-                                        <span>Statut:</span>
+                                        <span>Estado:</span>
                                         <span className={`px-2 py-1 rounded-full text-xs ${
                                             userData.abonneExpire
                                                 ? "bg-red-100 text-red-800"
                                                 : "bg-green-100 text-green-800"
                                         }`}>
-                                            {userData.abonneExpire ? "Expiré" : "Actif"}
+                                            {userData.abonneExpire ? "Expirado" : "Activo"}
                                         </span>
                                     </div>
                                 </div>
@@ -227,7 +227,7 @@ export function Navbar() {
                             onClick={handleLogout}
                         >
                             <LogOut className="mr-2 h-4 w-4" />
-                            <span>Déconnexion</span>
+                            <span>Cerrar sesión</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                         </DropdownMenu>

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Ticket, TicketStatus } from './types'
 import { fetchTickets, updateTicket } from '@/lib/api/tickets'
 import * as dateFns from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { es } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
@@ -30,9 +30,9 @@ export function TicketList() {
     const canPerformActions = canUpdateTickets(user)
     const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
     
-    // Vérifie si l'utilisateur est l'auteur du ticket (kept for future use)
+    // Verifica si el usuario es el autor del ticket (guardado para uso futuro)
     const _isTicketAuthor = (ticket: Ticket) => {
-        // some payloads use `emailClient`, others embed client info
+        // algunos payloads usan `emailClient`, otros incluyen la información del cliente
         const ticketEmail = ticket.emailClient || ticket.client?.email
         return user?.email && ticketEmail ? user.email === ticketEmail : false
     }
@@ -43,14 +43,14 @@ export function TicketList() {
             const data = await fetchTickets()
             setTickets(data)
         } catch (err) {
-            setError('Erreur lors du chargement des tickets')
+            setError('Error al cargar los tickets')
             console.error(err)
         } finally {
             setLoading(false)
         }
     }
 
-    // Filtrer les tickets selon les règles métier
+    // Filtrar tickets según las reglas de negocio
     const filteredTickets = useMemo(() => {
         if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
             return [];
@@ -61,7 +61,7 @@ export function TicketList() {
         return tickets.filter(ticket => {
             if (!ticket) return false;
             
-            // Toujours afficher les tickets ouverts, peu importe la date
+            // Mostrar siempre los tickets abiertos, sin importar la fecha
             if (ticket.statut === 'OUVERT') {
                 return true;
             }
@@ -70,13 +70,13 @@ export function TicketList() {
                 const ticketDate = new Date(ticket.createdAt);
                 return dateFns.isAfter(ticketDate, threeMonthsAgo);
             } catch (e) {
-                console.error('Erreur de date pour le ticket:', ticket.id, e)
+                console.error('Error de fecha para el ticket:', ticket.id, e)
                 return false
             }
         })
     }, [tickets])
 
-    // Filtrer par statut
+    // Filtrar por estado
     const ticketsByStatus = useMemo(() => {
         if (statusFilter === 'TOUS') {
             return filteredTickets;
@@ -114,7 +114,7 @@ export function TicketList() {
 
     const handleSendReply = async (ticketId: string) => {
         if (!replyText.trim()) {
-            toast.error('Veuillez saisir un message')
+            toast.error('Por favor ingrese un mensaje')
             return
         }
 
@@ -131,10 +131,10 @@ export function TicketList() {
 
             setReplyingTo(null)
             setReplyText('')
-            toast.success('Réponse envoyée et ticket fermé')
+            toast.success('Respuesta enviada y ticket cerrado')
         } catch (err) {
             console.error('Erreur lors de l\'envoi de la réponse:', err)
-            toast.error('Erreur lors de l\'envoi de la réponse')
+            toast.error('Error al enviar la respuesta')
         } finally {
             setIsSubmitting(false)
         }
@@ -151,9 +151,9 @@ export function TicketList() {
 
     const getStatusIcon = (status: TicketStatus) => {
         switch (status) {
-            case 'OUVERT': return '🔴'
-            case 'EN_COURS': return '🟡'
-            case 'FERME': return '🟢'
+            case 'OUVERT': return '🔴 ABIERTO'
+            case 'EN_COURS': return '🟡 EN CURSO'
+            case 'FERME': return '🟢 CERRADO'
             default: return '⚪'
         }
     }
@@ -161,11 +161,11 @@ export function TicketList() {
     const formatFn = dateFns.format as unknown as (d: Date | number, f?: string, o?: { locale?: unknown }) => string;
 
     const formatDate = (dateString: string) => {
-        return formatFn(new Date(dateString), 'dd MMMM yyyy à HH:mm', { locale: fr })
+        return formatFn(new Date(dateString), "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })
     }
 
     const formatShortDate = (dateString: string) => {
-        return formatFn(new Date(dateString), 'dd/MM/yy HH:mm', { locale: fr })
+        return formatFn(new Date(dateString), 'dd/MM/yy HH:mm', { locale: es })
     }
 
     useEffect(() => {
@@ -174,22 +174,22 @@ export function TicketList() {
 
     const handleStatusChange = async (ticketId: string, newStatus: TicketStatus) => {
         try {
-            // L'admin ne peut pas remettre un ticket en "OUVERT"
+            // El administrador no puede volver a abrir un ticket
             if (newStatus === 'OUVERT') {
-                toast.error('Vous ne pouvez pas rouvrir un ticket')
+                toast.error('No puede reabrir un ticket')
                 return
             }
 
             let reponseMessage = ''
             switch (newStatus) {
                 case 'EN_COURS':
-                    reponseMessage = 'Votre demande est maintenant prise en charge par notre équipe. Nous vous tiendrons informé de l\'avancement.'
+                    reponseMessage = 'Su solicitud está siendo atendida por nuestro equipo. Le mantendremos informado del progreso.'
                     break
                 case 'FERME':
-                    reponseMessage = 'Votre demande a été traitée et le ticket est maintenant fermé. Si vous avez d\'autres questions, n\'hésitez pas à nous contacter.'
+                    reponseMessage = 'Su solicitud ha sido procesada y el ticket está ahora cerrado. Si tiene otras preguntas, no dude en contactarnos.'
                     break
                 default:
-                    reponseMessage = 'Statut du ticket mis à jour.'
+                    reponseMessage = 'Estado del ticket actualizado.'
             }
 
             const updatedTicket = await updateTicket(ticketId, {
@@ -201,22 +201,22 @@ export function TicketList() {
                 ticket.id === updatedTicket.id ? updatedTicket : ticket
             ))
 
-            toast.success(`Ticket passé en "${newStatus === 'EN_COURS' ? 'En cours' : 'Fermé'}"`)
+            toast.success(`Ticket marcado como "${newStatus === 'EN_COURS' ? 'En curso' : 'Cerrado'}"`)
         } catch (err) {
-            setError('Erreur lors de la mise à jour du ticket')
+            setError('Error al actualizar el ticket')
             console.error(err)
-            toast.error('Erreur lors de la mise à jour')
+            toast.error('Error durante la actualización')
         }
     }
 
     const statusOptions = [
-        { value: 'TOUS', label: 'Tous les statuts' },
-        { value: 'OUVERT', label: 'Ouverts' },
-        { value: 'EN_COURS', label: 'En cours' },
-        { value: 'FERME', label: 'Fermés' }
+        { value: 'TOUS', label: 'Todos los estados' },
+        { value: 'OUVERT', label: 'Abiertos' },
+        { value: 'EN_COURS', label: 'En curso' },
+        { value: 'FERME', label: 'Cerrados' }
     ]
 
-    // Vérifier si les tickets sont bien formés
+    // Verificar si los tickets están bien formados
     if (tickets.length > 0 && !tickets[0].id) {
         console.error('Erreur: le premier ticket ne contient pas d\'ID valide');
     }
@@ -224,7 +224,7 @@ export function TicketList() {
     if (loading) return (
         <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <span className="ml-2 text-gray-600">Chargement des tickets...</span>
+            <span className="ml-2 text-gray-600">Cargando tickets...</span>
         </div>
     )
 
@@ -238,7 +238,7 @@ export function TicketList() {
                         className="mt-4 border-red-300 text-red-600 hover:bg-red-100"
                         onClick={loadTickets}
                     >
-                        Réessayer le chargement
+                        Reintentar carga
                     </Button>
                 </div>
             </CardContent>
@@ -251,14 +251,14 @@ export function TicketList() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center w-full gap-2">
                     <div className="flex-1">
                         <div className="flex items-center justify-between gap-4">
-                            <h2 className="text-2xl font-bold text-gray-900">Support client</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">Soporte al cliente</h2>
                             <div className="sm:hidden">
                                 <span className="inline-flex items-center justify-center h-6 px-3 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
                                     {ticketsByStatus.length} ticket{ticketsByStatus.length > 1 ? 's' : ''}
                                 </span>
                             </div>
                         </div>
-                        <p className="text-gray-600 mt-1">Gérez les demandes et questions de vos clients</p>
+                        <p className="text-gray-600 mt-1">Gestione las solicitudes y preguntas de sus clientes</p>
                     </div>
                     <div className="hidden sm:flex items-center">
                         <span className="inline-flex items-center justify-center h-6 px-3 text-sm font-medium rounded-full bg-blue-100 text-blue-800">
@@ -271,7 +271,7 @@ export function TicketList() {
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     <Filter className="h-4 w-4 text-gray-600 flex-shrink-0" />
-                    <span className="text-sm font-medium whitespace-nowrap">Filtrer par :</span>
+                    <span className="text-sm font-medium whitespace-nowrap">Filtrar por:</span>
                     <div className="w-full sm:w-auto">
                         <Select
                             value={statusFilter}
@@ -281,7 +281,7 @@ export function TicketList() {
                             }}
                         >
                             <SelectTrigger className="w-full sm:w-[180px]">
-                                <SelectValue placeholder="Statut" />
+                                <SelectValue placeholder="Estado" />
                             </SelectTrigger>
                             <SelectContent>
                                 {statusOptions.map(option => (
@@ -296,8 +296,8 @@ export function TicketList() {
 
                 <div className="text-xs text-gray-500 text-center w-full sm:w-auto">
                         {statusFilter === 'OUVERT'
-                            ? 'Affichage de tous les tickets ouverts'
-                            : 'Affichage des tickets des 3 derniers mois'}
+                            ? 'Mostrar todos los tickets abiertos'
+                            : 'Mostrando tickets de los últimos 3 meses'}
                     </div>
                 </div>
 
@@ -306,13 +306,12 @@ export function TicketList() {
                         <CardContent>
                             <List className="mx-auto h-16 w-16 text-gray-300 mb-4" />
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                {statusFilter === 'TOUS' ? 'Aucun ticket' : `Aucun ticket ${statusFilter.toLowerCase()}`}
+                                {statusFilter === 'TOUS' ? 'Ningún ticket' : `Ningún ticket ${statusFilter.toLowerCase()}`}
                             </h3>
-                            <p className="text-gray-500">
-                                {statusFilter === 'OUVERT' 
-                                    ? 'Aucun ticket ouvert pour le moment' 
-                                    : 'Aucun ticket correspondant à vos critères'}
-                            </p>
+                            <div className="text-center py-8 text-gray-500">
+                <p className="mb-2">Ningún ticket abierto</p>
+                <p className="text-sm">Ningún ticket abierto por el momento</p>
+            </div>
                         </CardContent>
                     </Card>
                 ) : (
@@ -348,12 +347,12 @@ export function TicketList() {
                                                             {isExpanded ? (
                                                                 <>
                                                                     <ChevronUp className="h-4 w-4 mr-1" />
-                                                                    Réduire
+                                                                    Reducir
                                                                 </>
                                                             ) : (
                                                                 <>
                                                                     <Eye className="h-4 w-4 mr-1" />
-                                                                    Détails
+                                                                    Detalles
                                                                 </>
                                                             )}
                                                         </Button>
@@ -384,13 +383,13 @@ export function TicketList() {
                                                             onChange={(e) => handleStatusChange(ticket.id, e.target.value as TicketStatus)}
                                                             className="text-sm border rounded px-2 py-1 bg-white"
                                                         >
-                                                            <option value="OUVERT">Ouvert</option>
-                                                            <option value="EN_COURS">En cours</option>
-                                                            <option value="FERME">Fermé</option>
+                                                            <option value="OUVERT">Abierto</option>
+                                                            <option value="EN_COURS">En curso</option>
+                                                            <option value="FERME">Cerrado</option>
                                                         </select>
                                                     ) : (
                                                         <Badge className={`${getStatusBadgeVariant(ticket.statut)}`}>
-                                                            {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En cours' : ticket.statut}
+                                                            {getStatusIcon(ticket.statut)} {ticket.statut === 'EN_COURS' ? 'En curso' : ticket.statut === 'OUVERT' ? 'Abierto' : 'Cerrado'}
                                                         </Badge>
                                                     )}
                                                 </div>
@@ -403,7 +402,7 @@ export function TicketList() {
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2 h-2 bg-gray-500 rounded-full flex-shrink-0"></div>
-                                                        <h4 className="font-medium text-gray-900">Description</h4>
+                                                        <h4 className="font-medium text-gray-900">Descripción</h4>
                                                     </div>
                                                     <p className="text-gray-800 pl-4 whitespace-pre-line">{ticket.description}</p>
                                                 </div>
@@ -413,11 +412,11 @@ export function TicketList() {
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                                                            <h4 className="font-medium text-blue-900">Réponse du support</h4>
+                                                            <h4 className="font-medium text-blue-900">Respuesta del soporte</h4>
                                                         </div>
                                                         <p className="text-blue-800 pl-4 whitespace-pre-line">{ticket.reponseAdmin}</p>
                                                         <div className="text-xs text-blue-600 mt-1 pl-4">
-                                                            Dernière mise à jour : {formatDate(ticket.updatedAt)}
+                                                            Última actualización: {formatDate(ticket.updatedAt)}
                                                         </div>
                                                     </div>
                                                 ) : (

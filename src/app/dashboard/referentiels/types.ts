@@ -18,11 +18,11 @@ export interface ReferentielCategory {
 }
 
 export const REFERENTIEL_CATEGORIES: Record<string, string> = {
-  '001': 'Ville',
-  '002': "Secteur d'activité",
-  '003': 'Opérateur',
-  '004': 'Pays',
-  '005': 'Motifs de rejet'
+  '001': 'Ciudad',
+  '002': 'Sector de actividad',
+  '003': 'Operador',
+  '004': 'País',
+  '005': 'Motivos de rechazo'
 } as const;
 
 // Pour la création, refID est optionnel car généré côté serveur

@@ -43,8 +43,8 @@ export default function ProfilePage() {
       } catch (error) {
         console.error('Error fetching profile:', error);
         toast({
-          title: 'Erreur',
-          description: error instanceof Error ? error.message : 'Impossible de charger le profil utilisateur',
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'No se pudo cargar el perfil del usuario',
           variant: 'destructive',
         });
       } finally {
@@ -57,19 +57,19 @@ export default function ProfilePage() {
 
   const validatePassword = (password: string): { valid: boolean; message: string } => {
     if (password.length < 12) {
-      return { valid: false, message: 'Le mot de passe doit contenir au moins 12 caractères' };
+      return { valid: false, message: 'La contraseña debe contener al menos 12 caracteres' };
     }
     if (!/[a-z]/.test(password)) {
-      return { valid: false, message: 'Le mot de passe doit contenir au moins une lettre minuscule' };
+      return { valid: false, message: 'La contraseña debe contener al menos una letra minúscula' };
     }
     if (!/[A-Z]/.test(password)) {
-      return { valid: false, message: 'Le mot de passe doit contenir au moins une lettre majuscule' };
+      return { valid: false, message: 'La contraseña debe contener al menos una letra mayúscula' };
     }
     if (!/[0-9]/.test(password)) {
-      return { valid: false, message: 'Le mot de passe doit contenir au moins un chiffre' };
+      return { valid: false, message: 'La contraseña debe contener al menos un dígito' };
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return { valid: false, message: 'Le mot de passe doit contenir au moins un caractère spécial (ex: !@#$%^&*)' };
+      return { valid: false, message: 'La contraseña debe contener al menos un carácter especial (por ejemplo: !@#$%^&*)' };
     }
     return { valid: true, message: '' };
   };
@@ -79,8 +79,8 @@ export default function ProfilePage() {
     
     if (newPassword !== confirmPassword) {
       toast({
-        title: 'Erreur',
-        description: 'Les mots de passe ne correspondent pas',
+        title: 'Error',
+        description: 'Las contraseñas no coinciden',
         variant: 'destructive',
       });
       return;
@@ -90,7 +90,7 @@ export default function ProfilePage() {
     if (!passwordValidation.valid) {
       setShowPasswordRequirements(true);
       toast({
-        title: 'Erreur',
+        title: 'Error',
         description: passwordValidation.message,
         variant: 'destructive',
       });
@@ -108,16 +108,16 @@ export default function ProfilePage() {
       });
       
       const confirmRedirect = window.confirm(
-        'Votre mot de passe a été mis à jour avec succès.\n\n' +
-        'Pour des raisons de sécurité, vous allez être déconnecté et redirigé vers la page de connexion.\n' +
-        'Veuillez vous reconnecter avec votre nouveau mot de passe.\n\n' +
-        'Cliquez sur OK pour continuer.'
+        'Su contraseña ha sido actualizada correctamente.\n\n' +
+        'Por razones de seguridad, será desconectado y redirigido a la página de inicio de sesión.\n' +
+        'Por favor, inicie sesión nuevamente con su nueva contraseña.\n\n' +
+        'Haga clic en Aceptar para continuar.'
       );
       
       if (confirmRedirect) {
         toast({
-          title: 'Déconnexion en cours...',
-          description: 'Vous allez être redirigé vers la page de connexion.',
+          title: 'Cerrando sesión...',
+          description: 'Será redirigido a la página de inicio de sesión.',
         });
         
         // Déconnexion et redirection après un court délai
@@ -136,7 +136,7 @@ export default function ProfilePage() {
         message?: string;
       } | undefined;
 
-      let errorMessage = 'Une erreur est survenue lors de la modification du mot de passe';
+      let errorMessage = 'Se produjo un error al modificar la contraseña';
       if (err?.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (typeof err?.message === 'string') {
@@ -148,7 +148,7 @@ export default function ProfilePage() {
       }
 
       toast({
-        title: 'Erreur',
+        title: 'Error',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -158,20 +158,20 @@ export default function ProfilePage() {
   };
 
   if (authLoading || loading) {
-    return <Loading className="h-64" text="Chargement de votre profil..." />;
+    return <Loading className="h-64" text="Cargando su perfil..." />;
   }
 
   if (!profile) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Impossible de charger le profil utilisateur</p>
+        <p className="text-muted-foreground">No se pudo cargar el perfil del usuario</p>
         <Button 
           variant="outline" 
           className="mt-4"
           onClick={() => window.location.reload()}
         >
           <RotateCw className="mr-2 h-4 w-4" />
-          Réessayer
+          Reintentar
         </Button>
       </div>
     );
@@ -181,9 +181,9 @@ export default function ProfilePage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mon Profil</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Mi Perfil</h1>
           <p className="text-muted-foreground">
-            Gérez vos informations personnelles et votre mot de passe
+            Administre tu información personal y contraseña
           </p>
         </div>
       </div>
@@ -192,26 +192,26 @@ export default function ProfilePage() {
         <TabsList>
           <TabsTrigger value="profile">
             <UserIcon className="h-4 w-4 mr-2" />
-            Profil
+            Perfil
           </TabsTrigger>
           <TabsTrigger value="password">
             <Lock className="h-4 w-4 mr-2" />
-            Mot de passe
+            Contraseña
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Informations personnelles</CardTitle>
+              <CardTitle>Información personal</CardTitle>
               <CardDescription>
-                Ces informations sont utilisées pour vous identifier sur la plateforme.
+                Esta información se utiliza para identificarte en la plataforma.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Nom</Label>
+                  <Label htmlFor="lastName">Apellido</Label>
                   <Input 
                     id="lastName" 
                     value={profile.nomManager} 
@@ -219,7 +219,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">Prénom</Label>
+                  <Label htmlFor="firstName">Nombre</Label>
                   <Input 
                     id="firstName" 
                     value={profile.prenomManager} 
@@ -230,7 +230,7 @@ export default function ProfilePage() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Correo electrónico</Label>
                   <div className="flex">
                     <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
                       <Mail className="h-4 w-4" />
@@ -245,7 +245,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
+                  <Label htmlFor="phone">Teléfono</Label>
                   <div className="flex">
                     <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-100 border border-r-0 border-gray-300 rounded-l-md">
                       <Phone className="h-4 w-4" />
@@ -262,15 +262,20 @@ export default function ProfilePage() {
               </div>
               
               <div className="space-y-2">
-                <Label>Rôle</Label>
+                <Label>Rol</Label>
                 <div className="flex items-center p-2 bg-gray-50 rounded-md border">
-                  <span className="capitalize">{profile.role.toLowerCase().replace('_', ' ')}</span>
+                  <span className="capitalize">
+                    {profile.role === 'SUPER_ADMIN' 
+                      ? 'Super Administrador' 
+                      : profile.role.toLowerCase().replace('_', ' ')
+                    }
+                  </span>
                   <span className={`ml-auto px-2 py-1 text-xs rounded-full ${
                     profile.statutCompte === 'ACTIF' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {profile.statutCompte === 'ACTIF' ? 'Actif' : 'Inactif'}
+                    {profile.statutCompte === 'ACTIF' ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
               </div>
@@ -282,14 +287,14 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <CardTitle>Changer le mot de passe</CardTitle>
+                <CardTitle>Cambiar contraseña</CardTitle>
                 <div className="relative group">
                   <span className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-200 text-gray-600 text-xs font-medium">
                     ?
                   </span>
                   <div className="absolute z-10 hidden group-hover:block w-64 p-2 mt-2 text-xs text-gray-600 bg-white border border-gray-200 rounded-md shadow-lg">
-                    Pour des raisons de sécurité, vous serez déconnecté après avoir changé votre mot de passe.
-                    Vous devrez vous reconnecter avec votre nouveau mot de passe.
+                    Por razones de seguridad, se cerrará la sesión después de cambiar la contraseña.
+                    Deberás iniciar sesión nuevamente con tu nueva contraseña.
                   </div>
                 </div>
               </div>
@@ -298,17 +303,14 @@ export default function ProfilePage() {
                   <div className="rounded-md border border-red-200 bg-red-50 p-4">
                     <div className="flex items-center gap-2 text-red-700">
                       <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                      <div className="text-sm">
-                        <div className="font-medium">Exigences du mot de passe :</div>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          <li>12 caractères minimum</li>
-                          <li>Une lettre majuscule</li>
-                          <li>Une lettre minuscule</li>
-                          <li>Un chiffre</li>
-                          <li>Un caractère spécial (!@#$%^&*)</li>
-                        </ul>
-                      </div>
+                      <p className="font-medium">La contraseña no cumple con los requisitos:</p>
                     </div>
+                    <ul className="mt-2 ml-6 list-disc text-sm text-red-600">
+                      <li>Al menos 8 caracteres</li>
+                      <li>Al menos una mayúscula</li>
+                      <li>Al menos un número</li>
+                      <li>Al menos un carácter especial</li>
+                    </ul>
                   </div>
                 </CardDescription>
               )}
@@ -316,7 +318,7 @@ export default function ProfilePage() {
             <CardContent>
               <form onSubmit={handlePasswordChange} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="currentPassword">Mot de passe actuel</Label>
+                  <Label htmlFor="currentPassword">Contraseña actual</Label>
                   <div className="relative">
                     <Input
                       id="currentPassword"
@@ -326,22 +328,27 @@ export default function ProfilePage() {
                       required
                       className="pr-10"
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                     >
                       {showCurrentPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 text-gray-500" />
                       )}
-                    </button>
+                      <span className="sr-only">
+                        {showCurrentPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      </span>
+                    </Button>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">Nouveau mot de passe</Label>
+                  <Label htmlFor="newPassword">Nueva contraseña</Label>
                   <div className="relative">
                     <Input
                       id="newPassword"
@@ -351,22 +358,27 @@ export default function ProfilePage() {
                       required
                       className="pr-10"
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowNewPassword(!showNewPassword)}
                     >
                       {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 text-gray-500" />
                       )}
-                    </button>
+                      <span className="sr-only">
+                        {showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      </span>
+                    </Button>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmer le nouveau mot de passe</Label>
+                  <Label htmlFor="confirmPassword">Confirmar nueva contraseña</Label>
                   <div className="relative">
                     <Input
                       id="confirmPassword"
@@ -376,31 +388,39 @@ export default function ProfilePage() {
                       required
                       className="pr-10"
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4 text-gray-500" />
                       ) : (
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 text-gray-500" />
                       )}
-                    </button>
+                      <span className="sr-only">
+                        {showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      </span>
+                    </Button>
                   </div>
                 </div>
                 
                 <div className="flex justify-end pt-4">
-                  <Button type="submit" disabled={saving}>
+                  <Button 
+                    type="submit" 
+                    disabled={saving || !currentPassword || !newPassword || !confirmPassword}
+                  >
                     {saving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Enregistrement...
+                        Guardando...
                       </>
                     ) : (
                       <>
                         <Save className="mr-2 h-4 w-4" />
-                        Enregistrer les modifications
+                        Guardar nueva contraseña
                       </>
                     )}
                   </Button>

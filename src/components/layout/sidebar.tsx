@@ -11,16 +11,16 @@ import { useState, useEffect } from "react"
 
 // Éléments de menu de base pour tous les utilisateurs
 const baseMenuItems = [
-    { name: "Tableau de bord", icon: LayoutDashboard, href: "/dashboard" },
-    { name: "Clients", icon: Users, href: "/dashboard/clients" },
-    { name: "Commandes", icon: CreditCard, href: "/dashboard/credits" },
-    { name: "Facturation", icon: FileText, href: "/dashboard/facturation" },
+    { name: "Panel de control", icon: LayoutDashboard, href: "/dashboard" },
+    { name: "Clientes", icon: Users, href: "/dashboard/clients" },
+    { name: "Pedidos", icon: CreditCard, href: "/dashboard/credits" },
+    { name: "Facturación", icon: FileText, href: "/dashboard/facturation" },
     { name: "Tickets", icon: MessageSquare, href: "/dashboard/tickets" },
-    { name: "Paramètres", icon: Settings, href: "/dashboard/parametres" },
+    { name: "Configuración", icon: Settings, href: "/dashboard/parametres" },
 ]
 
 // Élément de menu Référentiels (uniquement pour SUPER_ADMIN)
-const referentielItem = { name: "Référentiels", icon: Database, href: "/dashboard/referentiels" }
+const referentielItem = { name: "Repositorios", icon: Database, href: "/dashboard/referentiels" }
 
 export function Sidebar() {
     // mobile detection removed for now (not used)
@@ -52,8 +52,8 @@ export function Sidebar() {
         menuItems.splice(5, 0, referentielItem)
     }
     const securityItems = [
-        { name: 'Utilisateurs', icon: Users, href: '/dashboard/users' },
-        { name: "Journal d'activité", icon: ActivitySquare, href: "/dashboard/parametres/logs" },
+        { name: 'Usuarios', icon: Users, href: '/dashboard/users' },
+        { name: "Registro de actividad", icon: ActivitySquare, href: "/dashboard/parametres/logs" },
     ]
     const itemsToRender = isSuperAdmin
         ? menuItems
@@ -134,7 +134,7 @@ export function Sidebar() {
                         <AccordionTrigger className="px-3 py-2 rounded-xl hover:no-underline text-blue-100 hover:bg-blue-500 hover:text-white">
                             <div className="flex items-center gap-3">
                                 <Shield className="h-5 w-5" />
-                                <span className="font-medium">Sécurité</span>
+                                <span className="font-medium">Seguridad</span>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="pl-2">

@@ -7,9 +7,9 @@ interface CreditStatusBadgeProps {
 
 export function CreditStatusBadge({ status }: CreditStatusBadgeProps) {
     const statusConfig = {
-        PENDING: { label: "En attente", variant: "secondary" as const, icon: Clock },
-        APPROVED: { label: "Approuvé", variant: "default" as const, icon: CheckCircle },
-        REJECTED: { label: "Rejeté", variant: "destructive" as const, icon: XCircle }
+        PENDING: { label: "Pendiente", variant: "secondary" as const, icon: Clock },
+        APPROVED: { label: "Aprobado", variant: "default" as const, icon: CheckCircle },
+        REJECTED: { label: "Rechazado", variant: "destructive" as const, icon: XCircle }
     }
 
     const config = statusConfig[status] || statusConfig.PENDING

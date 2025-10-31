@@ -79,8 +79,8 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
       }
 
       toast({
-        title: 'Succès',
-        description: 'Paramètres du pied de page mis à jour avec succès',
+        title: 'Éxito',
+        description: 'Configuración del pie de página actualizada correctamente',
       });
       
       onUpdate(footerData);
@@ -88,8 +88,8 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
     } catch (error) {
       console.error('Erreur:', error);
       toast({
-        title: 'Erreur',
-        description: 'Une erreur est survenue lors de la mise à jour',
+        title: 'Error',
+        description: 'Se produjo un error al actualizar',
         variant: 'destructive',
       });
     } finally {
@@ -109,9 +109,9 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Modifier le pied de page</DialogTitle>
+          <DialogTitle>Modificar el pie de página</DialogTitle>
           <DialogDescription>
-            Personnalisez les informations qui apparaissent en bas de vos factures
+            Personalice la información que aparece al pie de sus facturas
           </DialogDescription>
         </DialogHeader>
         
@@ -124,27 +124,27 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="companyName" className="text-sm font-medium">
-                  Nom de l&apos;entreprise
+                  Nombre de la empresa
                 </label>
                 <Input
                   id="companyName"
                   name="companyName"
                   value={footerData.companyName}
                   onChange={handleChange}
-                  placeholder="Nom de l&apos;entreprise"
+                  placeholder="Nombre de la empresa"
                 />
               </div>
 
               <div className="space-y-2">
                 <label htmlFor="companyAddress" className="text-sm font-medium">
-                  Adresse
+                  Dirección
                 </label>
                 <Input
                   id="companyAddress"
                   name="companyAddress"
                   value={footerData.companyAddress}
                   onChange={handleChange}
-                  placeholder="Adresse de l&apos;entreprise"
+                  placeholder="Pago al recibir la factura. Se acepta pago en efectivo."
                 />
               </div>
 
@@ -157,7 +157,7 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
                   name="companyNif"
                   value={footerData.companyNif}
                   onChange={handleChange}
-                  placeholder="Numéro d'identification fiscale"
+                  placeholder="Número de identificación fiscal"
                 />
               </div>
 
@@ -170,7 +170,7 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
                   name="companyRccm"
                   value={footerData.companyRccm}
                   onChange={handleChange}
-                  placeholder="Numéro RCCM"
+                  placeholder="Número RCCM"
                 />
               </div>
 
@@ -190,28 +190,28 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
 
               <div className="space-y-2">
                 <label htmlFor="companyPhone" className="text-sm font-medium">
-                  Téléphone
+                  Teléfono
                 </label>
                 <Input
                   id="companyPhone"
                   name="companyPhone"
                   value={footerData.companyPhone}
                   onChange={handleChange}
-                  placeholder="+241 XX XX XX XX"
+                  placeholder="+XX XXX XXX XXX"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="paymentNote" className="text-sm font-medium">
-                Note de paiement
+                Nota de pago
               </label>
               <Textarea
                 id="paymentNote"
                 name="paymentNote"
                 value={footerData.paymentNote}
                 onChange={handleChange}
-                placeholder="Ex: Paiement exigé sous 15 jours."
+                placeholder="Ex: Pago exigido bajo 15 días."
                 className="min-h-[100px]"
               />
             </div>
@@ -223,18 +223,18 @@ export function FooterForm({ isOpen, onClose, initialData, onUpdate }: FooterFor
                 onClick={onClose}
                 disabled={saving}
               >
-                Annuler
+                Cancelar
               </Button>
               <Button type="submit" disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enregistrement...
+                    Guardando...
                   </>
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    Enregistrer
+                    Guardar
                   </>
                 )}
               </Button>

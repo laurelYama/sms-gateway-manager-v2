@@ -8,8 +8,10 @@ interface ClientStatsProps {
 
 export function ClientStats({ clients }: ClientStatsProps) {
   const formatNumber = (amount: number) => {
-    return new Intl.NumberFormat("fr-FR").format(Math.round(amount))
+    return new Intl.NumberFormat("es-ES").format(Math.round(amount))
   }
+
+  const activeCount = clients.filter((c) => c.statutCompte === "ACTIF").length
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -17,12 +19,14 @@ export function ClientStats({ clients }: ClientStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Building className="h-4 w-4" />
-            Total Clients
+            Total Clientes
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{clients.length}</div>
-          <p className="text-gray-500 text-sm">Comptes enregistrés</p>
+          <p className="text-xs text-muted-foreground">
+            {clients.length === 1 ? '1 cliente registrado' : `${clients.length} clientes registrados`}
+          </p>
         </CardContent>
       </Card>
 
@@ -30,13 +34,16 @@ export function ClientStats({ clients }: ClientStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <UserCheck className="h-4 w-4 text-green-600" />
-            Actifs
+            Activos
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">
-            {clients.filter((c) => c.statutCompte === "ACTIF").length}
+          <div className="text-2xl font-bold">
+            {activeCount} <span className="text-sm font-normal text-muted-foreground">/ {clients.length}</span>
           </div>
+          <p className="text-xs text-muted-foreground">
+            {Math.round((activeCount / Math.max(1, clients.length)) * 100)}% de los clientes
+          </p>
         </CardContent>
       </Card>
 
@@ -44,7 +51,7 @@ export function ClientStats({ clients }: ClientStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <UserX className="h-4 w-4 text-red-600" />
-            Suspendus
+            Suspendidos
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -58,7 +65,7 @@ export function ClientStats({ clients }: ClientStatsProps) {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Wallet className="h-4 w-4 text-blue-600" />
-            Solde Moyen Postpayé
+            Saldo Medio Postpago
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -72,7 +79,7 @@ export function ClientStats({ clients }: ClientStatsProps) {
               })()}
             </div>
             <p className="text-gray-500 text-xs">
-              Moyenne sur {clients.filter(c => c.typeCompte === 'POSTPAYE').length} compte(s) postpayé(s)
+              Promedio en {clients.filter(c => c.typeCompte === 'POSTPAYE').length} cuenta(s) pospago
             </p>
           </div>
         </CardContent>

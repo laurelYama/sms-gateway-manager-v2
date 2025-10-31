@@ -97,8 +97,8 @@ export default function ClientsPage() {
             
             // Note: pagination is computed from the filtered list on the client side
         } catch (error) {
-            console.error("Erreur API clients:", error)
-            toast.error("Impossible de charger la liste des clients")
+            console.error("Error de API de clientes:", error)
+            toast.error("No se pudo cargar la lista de clientes")
         } finally {
             setLoading(false)
         }
@@ -120,13 +120,13 @@ export default function ClientsPage() {
             )
 
             if (!response.ok) {
-                throw new Error("Erreur API référentiel")
+                throw new Error("Error de API de referentiel")
             }
 
             const data = await response.json()
             setter(data)
         } catch (error) {
-            console.error(`Erreur API référentiel ${category}:`, error)
+            console.error(`Error de API de referentiel ${category}:`, error)
         }
     }, [])
 
@@ -141,8 +141,8 @@ export default function ClientsPage() {
                     loadReferentiel("004", setPays) // Charger les pays
                 ])
             } catch (error) {
-                console.error("Erreur lors du chargement initial des données:", error)
-                toast.error("Erreur lors du chargement des données")
+                console.error("Error al cargar los datos iniciales:", error)
+                toast.error("Error al cargar los datos")
             }
         }
 
@@ -159,8 +159,8 @@ export default function ClientsPage() {
             try {
                 await loadClients(currentPage, pageSize)
             } catch (error) {
-                console.error("Erreur lors du chargement des données:", error)
-                toast.error("Erreur lors du chargement des données")
+                console.error("Error al cargar los datos:", error)
+                toast.error("Error al cargar los datos")
             }
         }
 
@@ -349,16 +349,16 @@ nif: client.nif || "",
                 )
             )
 
-            toast.success(`Client ${newStatus === "SUSPENDU" ? "suspendu" : "activé"} avec succès`)
+            toast.success(`Cliente ${newStatus === "SUSPENDU" ? "suspendido" : "activado"} con éxito`)
             
             // Rafraîchir la liste pour s'assurer que tout est à jour
             loadClients(currentPage, pageSize)
             
         } catch (error) {
-            console.error("Erreur lors du changement de statut du client:", error)
-            // Annuler la mise à jour optimiste en cas d'erreur
+            console.error("Error al cambiar el estado del cliente:", error)
+            // Cancelar la actualización optimista en caso de error
             setClients(prevClients => [...prevClients])
-            toast.error(`Échec du changement de statut: ${error instanceof Error ? error.message : 'Erreur inconnue'}`)
+            toast.error(`Error al cambiar el estado: ${error instanceof Error ? error.message : 'Error desconocido'}`)
         }
     }
 
@@ -403,10 +403,10 @@ nif: client.nif || "",
                 )
             )
             closeEditDialog()
-            toast.success("Client modifié avec succès")
+            toast.success("Cliente modificado con éxito")
         } catch (error) {
-            console.error("Erreur:", error)
-            toast.error("Une erreur s'est produite lors de la modification")
+            console.error("Error:", error)
+            toast.error("Ocurrió un error al realizar la modificación")
         }
     }
 
@@ -458,12 +458,20 @@ nif: client.nif || "",
                             responseContent = parsedContent;
                             
                             if (responseContent && typeof responseContent === 'object' && !Array.isArray(responseContent)) {
-                                errorMessage = (responseContent.message as string) || errorMessage;
-                                if (responseContent.errors) {
-                                    errorDetails = typeof responseContent.errors === 'string' 
-                                        ? responseContent.errors 
-                                        : Object.values(responseContent.errors as Record<string, unknown>).join(' ');
-                                }
+                                const message = responseContent.message as string;
+                    
+                    // Traduction des messages d'erreur courants
+                    if (message && message.includes('existe déjà') && message.includes('email')) {
+                        errorMessage = 'Un cliente con este correo electrónico ya existe';
+                    } else {
+                        errorMessage = message || errorMessage;
+                    }
+                    
+                    if (responseContent.errors) {
+                        errorDetails = typeof responseContent.errors === 'string' 
+                            ? responseContent.errors 
+                            : Object.values(responseContent.errors as Record<string, unknown>).join(' ');
+                    }
                             } else if (typeof responseContent === 'string') {
                                 errorMessage = responseContent || errorMessage;
                             }
@@ -490,16 +498,16 @@ nif: client.nif || "",
             setClients(prevClients => [...prevClients, newClient]);
             closeCreateDialog();
             
-            // Utilisation de toast.success de Sonner
-            toast.success("Client créé avec succès", {
-                description: `Le client ${newClient.raisonSociale || ''} a été ajouté avec succès`,
+            // Uso de toast.success de Sonner
+            toast.success("Cliente creado con éxito", {
+                description: `El cliente ${newClient.raisonSociale || ''} ha sido añadido correctamente`,
                 duration: 3000,
             });
         } catch (error) {
-            console.error("Erreur lors de la création du client:", error);
-            if (!(error instanceof Error && error.message.includes("Erreur lors de la création"))) {
-                toast.error("Une erreur est survenue", {
-                    description: error instanceof Error ? error.message : "Veuillez réessayer plus tard",
+            console.error("Error al crear el cliente:", error);
+            if (!(error instanceof Error && error.message.includes("Error al crear"))) {
+                toast.error("Ocurrió un error inesperado", {
+                    description: error instanceof Error ? error.message : "Por favor, intente de nuevo más tarde",
                     duration: 5000,
                 });
             }
@@ -548,7 +556,7 @@ nif: client.nif || "",
                     onPageSizeChange={handlePageSizeChange}
                     getStatusBadge={(status: string) => (
                         <Badge variant={status === "ACTIF" ? "default" : "destructive"}>
-                            {status === "ACTIF" ? "Actif" : "Suspendu"}
+                            {status === "ACTIF" ? "Activo" : "Suspendido"}
                         </Badge>
                     )}
                     formatCurrency={formatCurrency}
@@ -560,7 +568,7 @@ nif: client.nif || "",
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Créer un nouveau client</DialogTitle>
+                        <DialogTitle>Crear un nuevo cliente</DialogTitle>
                     </DialogHeader>
                     <ClientForm
                         mode="create"
@@ -581,7 +589,7 @@ nif: client.nif || "",
             <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Modifier le client</DialogTitle>
+                        <DialogTitle>Editar cliente</DialogTitle>
                     </DialogHeader>
                     <ClientForm
                         mode="edit"

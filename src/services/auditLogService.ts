@@ -80,33 +80,57 @@ export const auditLogService = {
 
   async getLogsByDate(params: DateRangeParams): Promise<AuditLog[]> {
     const token = getToken();
-    if (!token) throw new Error('Non authentifié');
+    if (!token) throw new Error('No autenticado');
 
     try {
       const { start, end } = params;
-      const startDate = new Date(start).toISOString().split('T')[0];
-      const endDate = new Date(end).toISOString().split('T')[0];
       
-      console.log(`Récupération des logs du ${startDate} au ${endDate}`);
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/audit-logs?startDate=${startDate}&endDate=${endDate}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      // Validar fechas
+      const startDateObj = new Date(start);
+      const endDateObj = new Date(end);
+      
+      if (isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
+        throw new Error('Fechas inválidas proporcionadas');
+      }
+      
+      const startDate = startDateObj.toISOString().split('T')[0];
+      const endDate = endDateObj.toISOString().split('T')[0];
+      
+      console.log(`[AuditLogService] Obteniendo logs desde ${startDate} hasta ${endDate}`);
+      
+      const url = new URL(`${API_BASE_URL}/api/v1/audit-logs`);
+      url.searchParams.append('startDate', startDate);
+      url.searchParams.append('endDate', endDate);
+      
+      console.log(`[AuditLogService] URL de la petición: ${url.toString()}`);
+      
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
 
-      console.log('Réponse du serveur (par date):', response.status, response.statusText);
+      console.log(`[AuditLogService] Respuesta del servidor: ${response.status} ${response.statusText}`);
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = typeof errorData === 'object' && errorData !== null && 'message' in errorData
-          ? String(errorData.message)
-          : `Erreur ${response.status}: ${response.statusText}`;
-        console.error('Erreur du serveur (par date):', errorMessage);
+        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          console.error('[AuditLogService] Detalles del error:', errorData);
+          
+          if (errorData && typeof errorData === 'object' && 'message' in errorData) {
+            errorMessage = String(errorData.message);
+          } else if (errorData && typeof errorData === 'string') {
+            errorMessage = errorData;
+          }
+        } catch (parseError) {
+          console.error('[AuditLogService] No se pudo analizar la respuesta de error:', parseError);
+        }
+        
+        console.error(`[AuditLogService] Error al obtener logs por fecha: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 

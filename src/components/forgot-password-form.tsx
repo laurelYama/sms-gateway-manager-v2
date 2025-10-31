@@ -11,6 +11,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
     const [loading, setLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
     const [successMessage, setSuccessMessage] = useState("")
+    // Version du 30/10/2025 - Suppression du resetUrl
     // router is not used in this form; keep code focused
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -21,25 +22,46 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
 
         try {
             const response = await fetch(`${API_BASE_URL}/api/V1/manager/password/forgot`, {
-                method: "POST",
+                method: 'POST',
                 headers: {
-                    "Content-Type": "application/json",
+                    'accept': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    email,
-                    resetUrl: `${window.location.origin}/reset-password`
+                    email: email.trim()
                 })
             })
 
             if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.message || "Une erreur est survenue")
+                let errorMessage = "Se produjo un error";
+                try {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json().catch(() => ({}));
+                        errorMessage = errorData.message || errorMessage;
+                    } else {
+                        const text = await response.text();
+                        errorMessage = text || errorMessage;
+                    }
+                } catch (e) {
+                    console.error('Error al procesar la respuesta del servidor:', e);
+                }
+                // Créer une interface pour l'erreur étendue
+                interface HttpError extends Error {
+                    status?: number;
+                }
+                
+                // Créer une erreur typée
+                const error = new Error(errorMessage) as HttpError;
+                // Ajouter le code d'état HTTP à l'erreur
+                error.status = response.status;
+                throw error;
             }
 
-            setSuccessMessage("Un email de réinitialisation a été envoyé à votre adresse email.")
+            setSuccessMessage("Se ha enviado un correo electrónico de restablecimiento a su dirección de correo electrónico.")
         } catch (error) {
-            console.error("Erreur lors de la demande de réinitialisation:", error)
-            setErrorMessage(error instanceof Error ? error.message : "Une erreur est survenue")
+            console.error("Error al solicitar el restablecimiento:", error)
+            setErrorMessage(error instanceof Error ? error.message : "Se produjo un error")
         } finally {
             setLoading(false)
         }
@@ -81,9 +103,9 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
                             />
                         </div>
                     </div>
-                    <h1 className="text-4xl font-bold mb-4">Réinitialisation du mot de passe</h1>
+                    <h1 className="text-4xl font-bold mb-4">Restablecimiento de contraseña</h1>
                     <p className="text-xl opacity-90 leading-relaxed">
-                        Entrez votre adresse email pour recevoir les instructions de réinitialisation de votre mot de passe.
+                        Ingrese su dirección de correo electrónico para recibir las instrucciones de restablecimiento de su contraseña.
                     </p>
                 </div>
             </div>
@@ -92,8 +114,8 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
             <div className="w-full lg:w-1/2 bg-white flex justify-center items-center h-screen m-0 p-0">
                 <div className="w-full max-w-md p-6 flex flex-col justify-center">
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Mot de passe oublié</h2>
-                        <p className="text-gray-600">Entrez votre adresse email pour réinitialiser votre mot de passe</p>
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">¿Olvidó su contraseña?</h2>
+                        <p className="text-gray-600">Ingrese su dirección de correo electrónico para restablecer su contraseña</p>
                     </div>
 
                     {errorMessage && (
@@ -120,7 +142,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
                                     onClick={onBackToLogin}
                                     className="w-full bg-[#0072BB] hover:bg-[#005b96] h-12"
                                 >
-                                    Retour à la connexion
+                                    Volver al inicio de sesión
                                 </Button>
                             </div>
                         </div>
@@ -128,12 +150,12 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                                    Adresse email
+                                    Correo electrónico
                                 </label>
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="votre@email.com"
+                                    placeholder="su@correo.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required
@@ -147,7 +169,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
                                     disabled={loading}
                                     className="w-full bg-[#0072BB] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#005b96] focus:ring-2 focus:ring-[#0072BB] focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg h-12"
                                 >
-                                    {loading ? 'Envoi en cours...' : 'Envoyer le lien de réinitialisation'}
+                                    {loading ? 'Enviando...' : 'Enviar enlace de restablecimiento'}
                                 </Button>
 
                                 <Button
@@ -156,7 +178,7 @@ export function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => voi
                                     onClick={onBackToLogin}
                                     className="w-full h-12 border-2 border-gray-200 hover:bg-gray-50"
                                 >
-                                    Retour à la connexion
+                                    Volver al inicio de sesión
                                 </Button>
                             </div>
                         </form>

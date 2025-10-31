@@ -34,13 +34,13 @@ export default function DashboardLayout({
             {/* Main Content Wrapper */}
             <div className="flex flex-col h-screen md:ml-64">
                 {/* Navbar */}
-                <header className="sticky top-0 z-10 bg-white shadow-sm flex-shrink-0">
+                <header className="fixed top-0 right-0 left-64 z-20 bg-white shadow-sm h-16">
                     <Navbar />
                 </header>
                 
                 {/* Scrollable Content Area */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                    <main className="min-h-[calc(100vh-4rem)] px-2 sm:px-4 py-4 md:p-6 bg-gray-50 pb-16 md:pb-6">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden pt-16">
+                    <main className="min-h-[calc(100vh-4rem)] px-2 sm:px-4 py-4 md:p-6 bg-gray-50">
                         <div className="w-full max-w-7xl mx-auto">
                             <div className="w-full">
                                 {children}

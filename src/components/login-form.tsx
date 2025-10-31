@@ -48,7 +48,12 @@ export function LoginForm() {
 
             // Lire le contenu de la réponse une seule fois
             const responseText = await response.text();
-            console.log('Réponse brute du serveur :', responseText);
+            console.log('Réponse brute du serveur :', {
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries()),
+                body: responseText
+            });
             let data;
             
             try {
@@ -57,13 +62,17 @@ export function LoginForm() {
             } catch (error) {
                 // Si le parsing JSON échoue, utiliser le texte brut comme message d'erreur
                 console.error("Erreur lors du parsing de la réponse:", error);
-                throw new Error(responseText || "Identifiants incorrects");
+                // Traduire le message d'erreur en espagnol
+                const errorMessage = responseText.includes("Échec de la connexion") 
+                    ? "Error de autenticación" 
+                    : (responseText || "Credenciales incorrectas");
+                throw new Error(errorMessage);
             }
 
             // Vérifier si la connexion a réussi
             if (response.ok && data.token) {
                 // Connexion réussie
-                setSuccessMessage("Connexion réussie!");
+                setSuccessMessage("¡Conexión exitosa!");
 
                 try {
                     const { setToken } = await import("@/lib/auth");
@@ -83,11 +92,11 @@ export function LoginForm() {
                     
                 } catch (error) {
                     console.error('Erreur lors de la gestion de la connexion:', error);
-                    setErrorMessage("Erreur lors de la connexion. Veuillez réessayer.");
+                    setErrorMessage("Error al iniciar sesión. Por favor, intente de nuevo.");
                 }
             } else {
                 // Échec de la connexion - afficher le message d'erreur du serveur ou un message par défaut
-                const errorMessage = data.message || "Échec de la connexion";
+                const errorMessage = data.message || "Error de autenticación";
                 setErrorMessage(errorMessage);
                 
                 // Effacer le mot de passe pour des raisons de sécurité
@@ -102,9 +111,9 @@ export function LoginForm() {
         } catch (error) {
             console.error("Erreur de connexion:", error);
             if (error instanceof Error) {
-                setErrorMessage(error.message || "Erreur de connexion au serveur. Veuillez réessayer.");
+                setErrorMessage(error.message || "Error de conexión al servidor. Por favor, intente de nuevo.");
             } else {
-                setErrorMessage("Erreur inattendue. Veuillez réessayer plus tard.");
+                setErrorMessage("Error inesperado. Por favor, intente de nuevo más tarde.");
             }
         } finally {
             setLoading(false);
@@ -140,9 +149,9 @@ export function LoginForm() {
                     </div>
 
                     {/* Titre et description */}
-                    <p className="text-xl mb-12 max-w-md opacity-90 leading-relaxed">
-                        Votre plateforme de gestion SMS professionnelle.
-                        Connectez-vous pour accéder à toutes vos fonctionnalités.
+                    <h1 className="text-2xl font-bold text-center mb-2 text-white">Página de inicio de sesión</h1>
+                    <p className="text-sm text-white text-center mb-6">
+                        Su plataforma de gestión de SMS profesional. Inicie sesión para acceder a todas sus funcionalidades.
                     </p>
                 </div>
             </div>
@@ -162,8 +171,8 @@ export function LoginForm() {
                                 className="mx-auto mb-6 w-32 h-auto object-contain"
                             />
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Connexion</h2>
-                        <p className="text-gray-600">Accédez à votre espace personnel</p>
+                        <h2 className="text-2xl font-bold mb-2">Inicio de Sesión</h2>
+                        <h2 className="text-lg font-semibold mb-2">Acceda a su espacio personal</h2>
                     </div>
 
                     {/* Message de succès */}
@@ -191,12 +200,12 @@ export function LoginForm() {
                     {/* Formulaire */}
                     <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                         {/* Email */}
-                        <div className="space-y-2">
-                            <label htmlFor="email" className="block text-sm font-semibold text-gray-700">Adresse email</label>
+                        <div className="space-y-1">
+                            <label htmlFor="email" className="block text-sm font-semibold text-gray-700">Dirección de correo electrónico</label>
                             <Input
                                 type="email"
                                 id="email"
-                                placeholder="votre@email.com"
+                                placeholder="su@correo.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -206,7 +215,16 @@ export function LoginForm() {
 
                         {/* Mot de passe */}
                         <div className="space-y-2">
-                            <label htmlFor="motDePasse" className="block text-sm font-semibold text-gray-700">Mot de passe</label>
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="motDePasse" className="block text-sm font-semibold text-gray-700">Contraseña</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowForgotPassword(true)}
+                                    className="text-xs text-muted-foreground hover:underline"
+                                >
+                                    ¿Olvidó su contraseña?
+                                </button>
+                            </div>
                             <div className="relative">
                                 <Input
                                     type={showPassword ? "text" : "password"}
@@ -238,24 +256,13 @@ export function LoginForm() {
                             </div>
                         </div>
 
-                        {/* Lien mot de passe oublié */}
-                        <div className="mt-4 text-end">
-                            <button
-                                type="button"
-                                onClick={() => setShowForgotPassword(true)}
-                                className="text-sm font-medium text-[#0072BB] hover:text-[#005b96] hover:cursor-pointer transition-colors focus:outline-none"
-                            >
-                                Mot de passe oublié ?
-                            </button>
-                        </div>
-
                         {/* Bouton de connexion */}
                         <Button
                             type="submit"
                             disabled={loading}
                             className="w-full bg-[#0072BB] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#005b96] focus:ring-2 focus:ring-[#0072BB] focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg h-12 text-base sm:text-md"
                         >
-                            {loading ? 'Connexion en cours...' : 'Se connecter'}
+                            {loading ? 'Conectando...' : 'Conectarse'}
                         </Button>
                     </form>
                 </div>

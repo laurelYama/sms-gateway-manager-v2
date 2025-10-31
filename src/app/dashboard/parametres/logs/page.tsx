@@ -10,8 +10,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Calendar, Search, Filter, ArrowLeft, User, Globe, Monitor, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Download, MoreHorizontal, X, Eye } from 'lucide-react';
-import * as dateFns from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale/es';
+import { format as tzFormat, toZonedTime } from 'date-fns-tz';
+
+// Función para formatear con la zona horaria y localización en español
+const formatWithLocale = (date: Date, formatStr: string) => {
+  try {
+    // Convertir a la zona horaria de Guinea Ecuatorial
+    const timeZone = 'Africa/Malabo';
+    const zonedDate = toZonedTime(date, timeZone);
+    
+    // Usar format de date-fns-tz que soporta la configuración de localización
+    return tzFormat(zonedDate, formatStr, { 
+      timeZone,
+      locale: es 
+    });
+  } catch (error) {
+    console.error('Error al formatear la fecha:', error);
+    return 'Fecha inválida';
+  }
+};
+
 import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { DateRange } from 'react-day-picker';
@@ -25,45 +45,57 @@ import { Badge } from '@/components/ui/badge';
 
 type LogViewType = 'all' | 'byDate' | 'byUser';
 
-// Fonction pour formater la date relative (ex: "il y a 2 heures")
+// Función para formatear el tiempo relativo (ej: "hace 2 horas")
 const formatRelativeTime = (dateString: string) => {
   const diffSec = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-  if (diffSec < 60) return `il y a ${diffSec} seconde${diffSec > 1 ? 's' : ''}`;
+  if (diffSec < 60) return `hace ${diffSec} segundo${diffSec !== 1 ? 's' : ''}`;
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `il y a ${diffMin} minute${diffMin > 1 ? 's' : ''}`;
+  if (diffMin < 60) return `hace ${diffMin} minuto${diffMin !== 1 ? 's' : ''}`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `il y a ${diffHour} heure${diffHour > 1 ? 's' : ''}`;
+  if (diffHour < 24) return `hace ${diffHour} hora${diffHour !== 1 ? 's' : ''}`;
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 30) return `il y a ${diffDay} jour${diffDay > 1 ? 's' : ''}`;
+  if (diffDay < 30) return `hace ${diffDay} día${diffDay !== 1 ? 's' : ''}`;
   const diffMonth = Math.floor(diffDay / 30);
-  if (diffMonth < 12) return `il y a ${diffMonth} mois`;
+  if (diffMonth < 12) return `hace ${diffMonth} mes${diffMonth !== 1 ? 'es' : ''}`;
   const diffYear = Math.floor(diffMonth / 12);
-  return `il y a ${diffYear} an${diffYear > 1 ? 's' : ''}`;
+  return `hace ${diffYear} año${diffYear !== 1 ? 's' : ''}`;
 };
 
-// casted wrapper to avoid date-fns type signature mismatch in TSX
-const formatFn = dateFns.format as unknown as (d: Date | number, f?: string, o?: { locale?: unknown }) => string;
 
-// Fonction pour formater la date en français
-const formatDate = (dateString: string) => {
-  return formatFn(new Date(dateString), 'dd/MM/yyyy HH:mm:ss', { locale: fr });
+// Función para formatear la fecha con manejo de errores
+const formatDate = (dateString: string | Date): string => {
+  try {
+    if (!dateString) return 'N/A';
+    const date = dateString instanceof Date ? dateString : new Date(dateString);
+    
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) {
+      console.warn('Fecha inválida:', dateString);
+      return 'Fecha inválida';
+    }
+    
+    return formatWithLocale(date, 'dd/MM/yyyy HH:mm:ss');
+  } catch (error) {
+    console.error('Error al formatear la fecha:', error);
+    return 'Error de fecha';
+  }
 };
 
-// Fonction pour extraire le verbe HTTP d'une action
+// Función para extraer el verbo HTTP de una acción
 const getActionVerb = (action: string): string => {
   const verb = action.split(' ')[0];
   switch(verb) {
-    case 'GET': return 'Consultation';
-    case 'POST': return 'Création';
+    case 'GET': return 'Consulta';
+    case 'POST': return 'Creación';
     case 'PUT':
-    case 'PATCH': return 'Mise à jour';
-    case 'DELETE': return 'Suppression';
-    case 'LOGIN': return 'Connexion';
+    case 'PATCH': return 'Actualización';
+    case 'DELETE': return 'Eliminación';
+    case 'LOGIN': return 'Inicio de sesión';
     default: return action;
   }
 };
 
-// Fonction pour obtenir la couleur du badge en fonction de l'action
+// Función para obtener la color del badge en función de la acción
 const getActionColor = (action: string): string => {
   const verb = action.split(' ')[0];
   switch(verb) {
@@ -93,60 +125,60 @@ export default function AuditLogsPage() {
       return;
     }
     if (user?.role !== 'SUPER_ADMIN') {
-      toast.error('Accès réservé aux SUPER_ADMIN');
+      toast.error('Acceso reservado para SUPER_ADMIN');
       router.push('/unauthorized');
     }
   }, [authLoading, isAuthenticated, router, user]);
 
-  // Fonction pour exporter les logs en Excel
+  // Función para exportar los logs en Excel
   const exportToExcel = () => {
     try {
-      // Préparer les données pour l'export
+      // Preparar los datos para la exportación
       const dataToExport = logs.map(log => ({
-        'Date': formatDate(log.timestamp),
-        'Utilisateur': log.userEmail || 'N/A',
-        'Action': log.action || 'N/A',
-  'Type d\'entité': log.entityType || 'N/A',
-        'ID Entité': log.entityId || 'N/A',
+        'Fecha': formatDate(log.timestamp),
+        'Usuario': log.userEmail || 'N/A',
+        'Acción': log.action || 'N/A',
+        'Tipo de entidad': log.entityType || 'N/A',
+        'ID Entidad': log.entityId || 'N/A',
         'IP': log.ipAddress || 'N/A',
-        'Rôle': log.role || 'N/A',
-        'Détails': log.details || 'N/A',
+        'Rol': log.role || 'N/A',
+        'Detalles': log.details || 'N/A',
         'User-Agent': log.userAgent || 'N/A'
       }));
 
-      // Créer un nouveau classeur
+      // Crear un nuevo libro
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(dataToExport);
 
-      // Ajuster la largeur des colonnes
+      // Ajustar el ancho de las columnas
       const wscols = [
-        { wch: 20 }, // Date
-        { wch: 25 }, // Utilisateur
-        { wch: 15 }, // Action
-        { wch: 20 }, // Type d'entité
-        { wch: 15 }, // ID Entité
+        { wch: 20 }, // Fecha
+        { wch: 25 }, // Usuario
+        { wch: 15 }, // Acción
+        { wch: 20 }, // Tipo de entidad
+        { wch: 15 }, // ID Entidad
         { wch: 15 }, // IP
-        { wch: 20 }, // Rôle
-        { wch: 30 }, // Détails
+        { wch: 20 }, // Rol
+        { wch: 30 }, // Detalles
         { wch: 50 }  // User-Agent
       ];
       ws['!cols'] = wscols;
 
-      // Ajouter la feuille au classeur
-      XLSX.utils.book_append_sheet(wb, ws, 'Logs Audit');
+      // Agregar la hoja al libro
+      XLSX.utils.book_append_sheet(wb, ws, 'Logs de auditoría');
 
-      // Générer le fichier Excel
+      // Generar el archivo Excel
       const date = new Date().toISOString().split('T')[0];
-      XLSX.writeFile(wb, `logs-audit-${date}.xlsx`);
+      XLSX.writeFile(wb, `logs-auditoria-${date}.xlsx`);
 
-      toast.success('Export Excel réussi');
+      toast.success('Exportación a Excel exitosa');
     } catch (error) {
-  console.error('Erreur lors de l\'export Excel:', error);
-  toast.error('Erreur lors de l\'export Excel');
+      console.error('Error al exportar a Excel:', error);
+      toast.error('Error al exportar a Excel');
     }
   };
   
-  // États pour la pagination
+  // Estados para la paginación
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(5);
   const [totalElements, setTotalElements] = useState(0);
@@ -168,10 +200,10 @@ export default function AuditLogsPage() {
       setError(null);
       let logsData: AuditLog[] = [];
       
-      // Vérifier si l'utilisateur est authentifié
+      // Verificar si el usuario está autenticado
       const token = getToken();
       if (!token) {
-        setError('Vous devez être connecté pour accéder à cette page');
+        setError('Debes estar conectado para acceder a esta página');
         router.push('/login');
         return;
       }
@@ -189,9 +221,9 @@ export default function AuditLogsPage() {
       
       setLogs(logsData);
     } catch (error) {
-      console.error('Error fetching logs:', error);
-      setError('Erreur lors de la récupération des logs. Veuillez réessayer.');
-      if (error instanceof Error && error.message === 'Non authentifié') {
+      console.error('Error al obtener los logs:', error);
+      setError('Error al obtener los logs. Por favor, inténtelo de nuevo.');
+      if (error instanceof Error && error.message === 'No autenticado') {
         router.push('/login');
       }
     } finally {
@@ -203,7 +235,7 @@ export default function AuditLogsPage() {
     fetchLogs();
   }, [logView, dateRange, userEmail]);
 
-  // Filtrer les logs en fonction de la recherche
+  // Filtrar los logs según la búsqueda
   const filteredLogs = logs
     .filter(log => {
       if (!searchQuery) return true;
@@ -216,11 +248,11 @@ export default function AuditLogsPage() {
         log.ipAddress?.toLowerCase().includes(search) ||
         log.userAgent?.toLowerCase().includes(search) ||
         log.role?.toLowerCase().includes(search) ||
-        new Date(log.timestamp).toLocaleString('fr-FR').toLowerCase().includes(search)
+        new Date(log.timestamp).toLocaleString('es-ES').toLowerCase().includes(search)
       );
     });
 
-  // Pagination côté client
+  // Paginación del lado del cliente
   const startIndex = currentPage * pageSize;
   const paginatedLogs = filteredLogs.slice(startIndex, startIndex + pageSize);
   const totalFilteredElements = filteredLogs.length;
@@ -228,8 +260,8 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       <div>
-  <h1 className="text-3xl font-bold tracking-tight">Journaux d&apos;activité</h1>
-  <p className="text-muted-foreground">Consultez les activités récentes sur la plateforme</p>
+        <h1 className="text-3xl font-bold tracking-tight">Registros de actividad</h1>
+        <p className="text-muted-foreground">Consulta las actividades recientes en la plataforma</p>
         
       </div>
 
@@ -243,9 +275,9 @@ export default function AuditLogsPage() {
                 className="w-full sm:w-auto"
               >
                 <TabsList>
-                  <TabsTrigger value="all">Tous</TabsTrigger>
-                  <TabsTrigger value="byDate">Par date</TabsTrigger>
-                  <TabsTrigger value="byUser">Par utilisateur</TabsTrigger>
+                  <TabsTrigger value="all">Todos</TabsTrigger>
+                  <TabsTrigger value="byDate">Por fecha</TabsTrigger>
+                  <TabsTrigger value="byUser">Por usuario</TabsTrigger>
                 </TabsList>
               </Tabs>
 
@@ -265,14 +297,14 @@ export default function AuditLogsPage() {
                         {dateRange?.from ? (
                           dateRange.to ? (
                             <>
-                              {formatFn(dateRange.from, "PPP", { locale: fr })} -{" "}
-                              {formatFn(dateRange.to, "PPP", { locale: fr })}
+                              {formatWithLocale(dateRange.from, 'PPP')} -{" "}
+                              {formatWithLocale(dateRange.to, 'PPP')}
                             </>
                           ) : (
-                            formatFn(dateRange.from, "PPP", { locale: fr })
+                            formatWithLocale(dateRange.from, 'PPP')
                           )
                         ) : (
-                          <span>Sélectionnez une plage de dates</span>
+                          <span>Seleccionar rango de fechas</span>
                         )}
                       </Button>
                     </PopoverTrigger>
@@ -284,7 +316,7 @@ export default function AuditLogsPage() {
                         selected={dateRange}
                         onSelect={setDateRange}
                         numberOfMonths={2}
-                        locale={fr}
+                        locale={es}
                       />
                     </PopoverContent>
                   </Popover>
@@ -294,7 +326,7 @@ export default function AuditLogsPage() {
               {logView === 'byUser' && (
                 <div className="flex w-full space-x-2">
                   <Input
-                    placeholder="Email de l'utilisateur"
+                    placeholder="Correo electrónico del usuario"
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
                     className="max-w-sm"
@@ -305,7 +337,7 @@ export default function AuditLogsPage() {
                     variant="outline"
                   >
                     <Search className="h-4 w-4 mr-2" />
-                    Rechercher
+                    Buscar
                   </Button>
                 </div>
               )}
@@ -314,7 +346,7 @@ export default function AuditLogsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher dans les logs..."
+                placeholder="Buscar en los logs..."
                 className="pl-9"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -342,12 +374,12 @@ export default function AuditLogsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[140px]">Date/Heure</TableHead>
-                    <TableHead className="w-[180px]">Utilisateur</TableHead>
-                    <TableHead className="w-[120px]">Action</TableHead>
-                    <TableHead className="w-[120px]">Rôle</TableHead>
-                    <TableHead>Détails</TableHead>
-                    <TableHead className="w-[100px] text-right">Actions</TableHead>
+                    <TableHead className="w-[140px]">Fecha/Hora</TableHead>
+                    <TableHead className="w-[180px]">Usuario</TableHead>
+                    <TableHead className="w-[120px]">Acción</TableHead>
+                    <TableHead className="w-[120px]">Rol</TableHead>
+                    <TableHead>Detalles</TableHead>
+                    <TableHead className="w-[100px] text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -356,10 +388,10 @@ export default function AuditLogsPage() {
                       <TableCell className="whitespace-nowrap overflow-hidden">
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">
-                            {formatFn(new Date(log.timestamp), 'dd/MM/yyyy', { locale: fr })}
+                            {formatDate(log.timestamp)}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatFn(new Date(log.timestamp), 'HH:mm:ss', { locale: fr })}
+                            {formatWithLocale(new Date(log.timestamp), 'HH:mm:ss')}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatRelativeTime(log.timestamp)}
@@ -370,7 +402,7 @@ export default function AuditLogsPage() {
                         <div className="flex items-center space-x-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <div className="flex flex-col">
-                            <span className="font-medium">{log.userEmail || 'Système'}</span>
+                            <span className="font-medium">{log.userEmail || 'Sistema'}</span>
                             {log.userId && <span className="text-xs text-muted-foreground">ID: {log.userId}</span>}
                           </div>
                         </div>
@@ -394,7 +426,7 @@ export default function AuditLogsPage() {
                         <div className="flex items-center space-x-2">
                           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                           <span className="truncate text-sm max-w-[180px] block">
-                            {log.description || 'Aucun détail'}
+                            {log.description || 'Sin detalles'}
                           </span>
                         </div>
                       </TableCell>
@@ -415,21 +447,21 @@ export default function AuditLogsPage() {
                               className="cursor-pointer"
                             >
                               <Eye className="mr-2 h-4 w-4" />
-                              <span>Voir les détails</span>
+                              <span>Ver detalles</span>
                             </DropdownMenuItem>
                             
                             <div className="px-2 py-1.5 text-sm space-y-2">
                               <div className="flex items-start gap-2 text-muted-foreground">
                                 <Globe className="h-4 w-4 flex-shrink-0 mt-0.5" />
                                 <div>
-                                  <div className="font-medium">Adresse IP</div>
+                                  <div className="font-medium">Dirección IP</div>
                                   <div className="font-mono text-xs break-all">{log.ipAddress || 'N/A'}</div>
                                 </div>
                               </div>
                               <div className="flex items-start gap-2 text-muted-foreground">
                                 <Monitor className="h-4 w-4 flex-shrink-0 mt-0.5" />
                                 <div>
-                                  <div className="font-medium">Navigateur</div>
+                                  <div className="font-medium">Navegador</div>
                                   <div className="text-xs break-all">{log.userAgent || 'N/A'}</div>
                                 </div>
                               </div>
@@ -437,7 +469,7 @@ export default function AuditLogsPage() {
                                 <div className="flex items-start gap-2 text-muted-foreground">
                                   <FileText className="h-4 w-4 flex-shrink-0 mt-0.5" />
                                   <div>
-                                    <div className="font-medium">Détails</div>
+                                    <div className="font-medium">Detalles</div>
                                     <div className="text-xs break-all">{typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}</div>
                                   </div>
                                 </div>
@@ -462,7 +494,7 @@ export default function AuditLogsPage() {
                     className="h-8 w-8 p-0"
                   >
                     <ChevronsLeft className="h-4 w-4" />
-                    <span className="sr-only">Première page</span>
+                    <span className="sr-only">Primera página</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -472,10 +504,10 @@ export default function AuditLogsPage() {
                     className="h-8 w-8 p-0"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    <span className="sr-only">Page précédente</span>
+                    <span className="sr-only">Página anterior</span>
                   </Button>
                   <div className="text-sm text-muted-foreground">
-                    Page {currentPage + 1} sur {Math.max(1, Math.ceil(filteredLogs.length / pageSize))}
+                    Página {currentPage + 1} de {Math.max(1, Math.ceil(filteredLogs.length / pageSize))}
                   </div>
                   <Button
                     variant="outline"
@@ -485,7 +517,7 @@ export default function AuditLogsPage() {
                     className="h-8 w-8 p-0"
                   >
                     <ChevronRight className="h-4 w-4" />
-                    <span className="sr-only">Page suivante</span>
+                    <span className="sr-only">Página siguiente</span>
                   </Button>
                   <Button
                     variant="outline"
@@ -495,7 +527,7 @@ export default function AuditLogsPage() {
                     className="h-8 w-8 p-0"
                   >
                     <ChevronsRight className="h-4 w-4" />
-                    <span className="sr-only">Dernière page</span>
+                    <span className="sr-only">Última página</span>
                   </Button>
                 </div>
                 
@@ -507,7 +539,7 @@ export default function AuditLogsPage() {
                     onClick={exportToExcel}
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Exporter
+                    Exportar
                   </Button>
                 </div>
               </div>
@@ -515,12 +547,12 @@ export default function AuditLogsPage() {
           ) : (
             <div className="flex flex-col items-center justify-center p-8 text-center">
               <Filter className="h-12 w-12 text-muted-foreground mb-2" />
-              <h3 className="text-lg font-medium">Aucun log trouvé</h3>
+              <h3 className="text-lg font-medium">No se encontraron registros</h3>
               <div className="text-center py-8">
                 <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-2 text-sm font-medium text-muted-foreground">Aucun log trouvé</h3>
+                <h3 className="mt-2 text-sm font-medium text-muted-foreground">No se encontraron registros</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {searchQuery ? 'Aucun résultat pour votre recherche.' : 'Aucun log disponible pour le moment.'}
+                  {searchQuery ? 'No hay resultados para su búsqueda.' : 'No hay registros disponibles en este momento.'}
                 </p>
               </div>
             </div>
@@ -533,27 +565,27 @@ export default function AuditLogsPage() {
     <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
       <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Détails du log</DialogTitle>
+            <DialogTitle>Detalles del registro</DialogTitle>
           </DialogHeader>
           {selectedLog && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+                <h4 className="text-sm font-medium text-muted-foreground">Descripción</h4>
                 <div className="p-3 bg-muted/50 rounded-md text-sm">
-                  {selectedLog.description || 'Aucun détail'}
+                  {selectedLog.description || 'Sin detalles'}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Adresse IP</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Dirección IP</h4>
                   <div className="p-3 bg-muted/50 rounded-md text-sm font-mono">
                     {selectedLog.ipAddress || 'N/A'}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">User Agent</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Navegador</h4>
                   <div className="p-3 bg-muted/50 rounded-md text-sm">
                     {selectedLog.userAgent || 'N/A'}
                   </div>
@@ -562,16 +594,16 @@ export default function AuditLogsPage() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Date</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Fecha y hora</h4>
                   <div className="p-3 bg-muted/50 rounded-md text-sm">
                     {formatDate(selectedLog.timestamp)}
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">Utilisateur</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Usuario</h4>
                   <div className="p-3 bg-muted/50 rounded-md text-sm">
-                    {selectedLog.userEmail || 'Système'}
+                    {selectedLog.userEmail || 'Sistema'}
                   </div>
                 </div>
               </div>

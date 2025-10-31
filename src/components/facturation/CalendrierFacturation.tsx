@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { ChevronDown, ChevronUp, Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
-import { fr } from "date-fns/locale"
+import { es } from "date-fns/locale"
 import { useState, useEffect } from "react"
 import { Calendrier } from "./types"
 
@@ -65,8 +65,8 @@ export function CalendrierFacturation({
     const currentYear = new Date().getFullYear()
     const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
     const months = [
-        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ]
 
     // Plus de statut dans les cellules du calendrier; on garde un affichage simple du jour
@@ -104,7 +104,7 @@ export function CalendrierFacturation({
         return (
             <Card className="mb-6">
                 <CardContent className="flex justify-center items-center h-48">
-                    <div className="animate-pulse text-gray-400">Chargement...</div>
+                    <div className="animate-pulse text-gray-400">Cargando...</div>
                 </CardContent>
             </Card>
         )
@@ -113,46 +113,40 @@ export function CalendrierFacturation({
     return (
         <Card className="mb-6">
             <CardHeader className="flex items-center justify-end space-y-0 pb-4">
-              <div className="flex gap-2">
-                <Select
-                  value={selectedMonth?.toString() || '0'}
-                  onValueChange={(value) => handleMonthChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue placeholder="Mois" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {months.map((month, index) => (
-                      <SelectItem key={month} value={index.toString()}>
-                        {month}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+              <div className="flex items-center space-x-2">
+                <Select value={selectedMonth.toString()} onValueChange={(value) => handleMonthChange(parseInt(value))}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Seleccionar mes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {months.map((month, index) => (
+                            <SelectItem key={index} value={index.toString()}>
+                                {month}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
-                <Select
-                  value={selectedYear?.toString() || new Date().getFullYear().toString()}
-                  onValueChange={(value) => handleYearChange(parseInt(value))}
-                >
-                  <SelectTrigger className="w-24">
-                    <SelectValue placeholder="Année" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select value={selectedYear.toString()} onValueChange={(value) => handleYearChange(parseInt(value))}>
+                    <SelectTrigger className="w-[120px]">
+                        <SelectValue placeholder="Año" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {years.map((year) => (
+                            <SelectItem key={year} value={year.toString()}>
+                                {year}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
-              </div>
+            </div>
             </CardHeader>
 
             <CardContent>
                 {/* Calendrier compact */}
                 <div className="mb-6">
                     <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-500 mb-2">
-                        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(day => (
-                            <div key={day} className="p-1">
+                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day, index) => (
+                            <div key={`day-${index}`} className="p-1">
                                 {day}
                             </div>
                         ))}
@@ -178,25 +172,20 @@ export function CalendrierFacturation({
                 {/* Légende supprimée (pas de statut affiché) */}
 
                 {/* Résumé des factures */}
-                <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-sm font-medium">Factures du mois</h3>
+                <div className="mt-4">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-medium">Facturas del mes</h3>
                         <Button
                             variant="ghost"
                             size="sm"
+                            className="text-muted-foreground"
                             onClick={() => setIsTableExpanded(!isTableExpanded)}
-                            className="h-8 text-xs"
                         >
+                            {isTableExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
                             {isTableExpanded ? (
-                                <>
-                                    <ChevronUp className="h-3 w-3 mr-1" />
-                                    Masquer les détails
-                                </>
+                                <ChevronUp className="ml-2 h-4 w-4" />
                             ) : (
-                                <>
-                                    <ChevronDown className="h-3 w-3 mr-1" />
-                                    Afficher les détails ({calendrier.length})
-                                </>
+                                <ChevronDown className="ml-2 h-4 w-4" />
                             )}
                         </Button>
                     </div>
@@ -206,8 +195,13 @@ export function CalendrierFacturation({
                             <Table className="text-xs">
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead className="h-8 px-2">Mois</TableHead>
-                                        <TableHead className="h-8 px-2">Période</TableHead>
+                                        <TableHead key="lundi" className="text-center p-1">Lun</TableHead>
+                                        <TableHead key="mardi" className="text-center p-1">Mar</TableHead>
+                                        <TableHead key="mercredi" className="text-center p-1">Mié</TableHead>
+                                        <TableHead key="jeudi" className="text-center p-1">Jue</TableHead>
+                                        <TableHead key="vendredi" className="text-center p-1">Vie</TableHead>
+                                        <TableHead key="samedi" className="text-center p-1">Sáb</TableHead>
+                                        <TableHead key="dimanche" className="text-center p-1">Dom</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -215,11 +209,11 @@ export function CalendrierFacturation({
                                         return (
                                             <TableRow key={item.id} className="h-8 hover:bg-muted/50">
                                                 <TableCell className="px-2 py-1">
-                                                    {new Date(2000, item.mois - 1, 1).toLocaleString('fr-FR', { month: 'short' })}
+                                                    {new Date(2000, item.mois - 1, 1).toLocaleString('es-ES', { month: 'short' })}
                                                 </TableCell>
                                                 <TableCell className="px-2 py-1">
-                                                    {formatFn(new Date(item.dateDebutConsommation), 'dd MMM', { locale: fr })} -{' '}
-                                                    {formatFn(new Date(item.dateFinConsommation), 'dd MMM', { locale: fr })}
+                                                    {formatFn(new Date(item.dateDebutConsommation), 'dd MMM', { locale: es })} -{' '}
+                                                    {formatFn(new Date(item.dateFinConsommation), 'dd MMM', { locale: es })}
                                                 </TableCell>
                                             </TableRow>
                                         );

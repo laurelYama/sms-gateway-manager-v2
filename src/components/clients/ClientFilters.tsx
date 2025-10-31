@@ -32,14 +32,14 @@ export function ClientFilters({
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 className="text-3xl font-bold">Gestion des Clients</h1>
-        <p className="text-gray-600">Liste des clients enregistrés sur la plateforme</p>
+        <h1 className="text-3xl font-bold">Gestión de Clientes</h1>
+        <p className="text-gray-600">Lista de clientes registrados en la plataforma</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
         <div className="relative">
           <Input
-            placeholder="Rechercher un client..."
+            placeholder="Buscar un cliente..."
             className="w-full sm:w-64"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -50,7 +50,7 @@ export function ClientFilters({
           {canAddClient && (
             <Button onClick={onAddClient} className="whitespace-nowrap">
               <Plus className="h-4 w-4 mr-2" />
-              Ajouter un client
+              Añadir un cliente
             </Button>
           )}
 
@@ -67,18 +67,18 @@ export function ClientFilters({
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="whitespace-nowrap">
                 <Filter className="h-4 w-4 mr-2" />
-                Statut: {statusFilter === "ALL" ? "Tous" : statusFilter}
+                Estado: {statusFilter === "ALL" ? "Todos" : statusFilter === "ACTIF" ? "Activos" : "Suspendidos"}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => onStatusFilterChange("ALL")}>
-                Tous les statuts
+                Todos los estados
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onStatusFilterChange("ACTIF")}>
-                Actifs uniquement
+                Solo activos
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onStatusFilterChange("SUSPENDU")}>
-                Suspendus uniquement
+                Solo suspendidos
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

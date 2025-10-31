@@ -98,7 +98,7 @@ export default function ParametresPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Paramètres</h1>
         <p className="text-muted-foreground">
-          Gérer les paramètres de l&apos;application
+          Administrar la configuración de la aplicación
         </p>
       </div>
 
@@ -106,7 +106,7 @@ export default function ParametresPage() {
         <TabsList>
           <TabsTrigger value="footer" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            <span>Pied de page</span>
+            <span>Pie de página</span>
           </TabsTrigger>
         </TabsList>
 
@@ -114,28 +114,28 @@ export default function ParametresPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center p-6 border rounded-lg">
               <div>
-                <h3 className="text-lg font-medium">Pied de page</h3>
+                <h3 className="text-lg font-medium">Pie de página</h3>
                 <p className="text-sm text-muted-foreground">
-                  Personnalisez les informations du pied de page pour vos factures
+                  Personalice la información del pie de página para sus facturas
                 </p>
               </div>
               <Button onClick={handleOpenFooterModal}>
                 <Settings className="mr-2 h-4 w-4" />
-                Modifier
+                Modificar
               </Button>
             </div>
 
             {/* Définir l'exercice */}
             <div className="flex justify-between items-center p-6 border rounded-lg">
               <div>
-                <h3 className="text-lg font-medium">Exercice de facturation</h3>
+                <h3 className="text-lg font-medium">Ejercicio de facturación</h3>
                     <p className="text-sm text-muted-foreground">
-                      Créez l&apos;exercice fiscal (année) et choisissez le jour de génération des factures du mois suivant
+                      Cree el ejercicio fiscal (año) y elija el día de generación de las facturas del mes siguiente
                     </p>
               </div>
               <Button onClick={() => setExerciseOpen(true)}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                Définir l&apos;exercice
+                Definir el ejercicio
               </Button>
             </div>
           </div>
@@ -155,12 +155,12 @@ export default function ParametresPage() {
       <Dialog open={exerciseOpen} onOpenChange={setExerciseOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Définir l&apos;exercice</DialogTitle>
+            <DialogTitle>Definir el ejercicio</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
-                <Label htmlFor="annee">Année</Label>
+                <Label htmlFor="annee">Año</Label>
                 <Input
                   id="annee"
                   type="number"
@@ -171,7 +171,7 @@ export default function ParametresPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="invoiceDay">Jour de génération (mois suivant)</Label>
+                <Label htmlFor="invoiceDay">Día de generación (mes siguiente)</Label>
                 <Input
                   id="invoiceDay"
                   type="number"
@@ -198,14 +198,14 @@ export default function ParametresPage() {
               onClick={() => setExerciseOpen(false)}
               disabled={creating}
             >
-              Annuler
+              Cancelar
             </Button>
             <Button
               onClick={async () => {
                 try {
                   const token = getToken();
                   if (!token) {
-                    toast.error('Non authentifié - Veuillez vous reconnecter');
+                    toast.error('No autenticado - Por favor, inicie sesión nuevamente');
                     return;
                   }
                   setCreating(true);
@@ -222,37 +222,38 @@ export default function ParametresPage() {
                       overwriteIfExists: overwrite,
                     })
                   });
+                  
                   if (!res.ok) {
-                    const status = res.status
-                    // On ne montre pas le message anglais du backend à l'utilisateur final
-                    let userDesc = "Une erreur est survenue lors de la création de l'exercice."
+                    const status = res.status;
+                    let userDesc = "Se produjo un error al crear el ejercicio.";
+                    
                     if (status === 409) {
-                      userDesc = "Un exercice pour cette année existe déjà."
+                      userDesc = "Ya existe un ejercicio para este año.";
                     } else if (status === 400) {
-                      userDesc = "Requête invalide. Vérifiez l’année et le jour de génération."
+                      userDesc = "Solicitud inválida. Verifique el año y el día de generación.";
                     } else if (status === 401 || status === 403) {
-                      userDesc = "Session expirée ou accès refusé. Veuillez vous reconnecter."
+                      userDesc = "Sesión expirada o acceso denegado. Por favor, inicie sesión nuevamente.";
                     } else if (status === 422) {
-                      userDesc = "Données non valides. Corrigez les champs indiqués."
+                      userDesc = "Datos no válidos. Corrija los campos indicados.";
                     } else if (status >= 500) {
-                      userDesc = "Erreur serveur. Réessayez plus tard."
+                      userDesc = "Error del servidor. Intente nuevamente más tarde.";
                     }
-
-                    const title = status === 409 ? 'Conflit' : 'Erreur';
-                  toast.error(userDesc, {
-                    id: 'exercise-error',
+                    
+                    toast.error(userDesc, {
+                      id: 'exercise-error',
+                      duration: 5000,
+                    });
+                    return;
+                  }
+                  
+                  toast.success(`Ejercicio ${exerciseYear} guardado con éxito`, {
+                    id: 'exercise-success',
                     duration: 5000,
                   });
-                  return;
-                }
-                toast.success(`Exercice ${exerciseYear} enregistré avec succès`, {
-                  id: 'exercise-success',
-                  duration: 5000,
-                });
                   setExerciseOpen(false);
                 } catch (error) {
                   console.error(error);
-                  toast.error(error instanceof Error ? error.message : 'Une erreur inconnue est survenue', {
+                  toast.error(error instanceof Error ? error.message : 'Se produjo un error desconocido', {
                     id: 'exercise-error',
                     duration: 5000,
                   });
@@ -262,7 +263,7 @@ export default function ParametresPage() {
               }}
               disabled={creating || !exerciseYear || !invoiceDay}
             >
-              {creating ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Traitement...</>) : 'Confirmer'}
+              {creating ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>) : 'Confirmar'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -50,15 +50,15 @@ const statusColors = {
   REJETE: '#EF4444' // rouge
 }
 
-// Données factices pour les exemples
+// Données factices pour les exemples (jours en espagnol)
 const mockSmsData = [
   { name: 'Lun', value: 400 },
   { name: 'Mar', value: 300 },
-  { name: 'Mer', value: 600 },
-  { name: 'Jeu', value: 800 },
-  { name: 'Ven', value: 500 },
-  { name: 'Sam', value: 100 },
-  { name: 'Dim', value: 200 },
+  { name: 'Mié', value: 600 },
+  { name: 'Jue', value: 800 },
+  { name: 'Vie', value: 500 },
+  { name: 'Sáb', value: 100 },
+  { name: 'Dom', value: 200 },
 ]
 
 const mockClientData = [
@@ -817,8 +817,8 @@ export default function DashboardPage() {
     // Charger les données immédiatement
     loadInitialData();
 
-    // Configurer le rafraîchissement automatique toutes les 30 secondes
-    const refreshInterval = setInterval(loadInitialData, 30000);
+    // Configurer le rafraîchissement automatique toutes les 10 minutes
+    const refreshInterval = setInterval(loadInitialData, 600000); // 10 minutes = 600 000 ms
 
     // Nettoyage unique
     return () => {
@@ -845,12 +845,21 @@ export default function DashboardPage() {
 
   // Données pour le graphique circulaire
   const ticketData = useMemo(() => {
+      // Mappage des statuts en espagnol
+      const statusLabels: Record<string, string> = {
+        'OUVERT': 'Abierto',
+        'EN_COURS': 'En curso',
+        'FERME': 'Cerrado',
+        'REJETE': 'Rechazado'
+      };
+      
       const data = Object.entries(ticketStats)
       .filter(([_, value]) => value > 0) // Ne garder que les statuts avec au moins un ticket
       .map(([name, value]) => ({
-        name: name.charAt(0) + name.slice(1).toLowerCase(), // Mettre en forme le nom
+        name: statusLabels[name] || name, // Utiliser le libellé traduit ou le nom d'origine
+        originalName: name, // Conserver le nom original pour les couleurs
         value,
-        color: statusColors[name as 'OUVERT'|'EN_COURS'|'FERME'] || '#9CA3AF' // Couleur par défaut gris
+        percentage: (value / Math.max(1, Object.values(ticketStats).reduce((a, b) => a + b, 0))) * 100
       }));
     
     return data;
@@ -879,9 +888,9 @@ export default function DashboardPage() {
     return date.toISOString().split('T')[0]
   }
 
-  // Fonction pour obtenir le nom du jour en français
+  // Fonction pour obtenir le nom du jour en espagnol
   const getDayName = (date: Date) => {
-    return date.toLocaleDateString('fr-FR', { weekday: 'short' })
+    return date.toLocaleDateString('es-ES', { weekday: 'short' })
   }
 
   // Fonction pour formater la date en temps relatif (ex: "il y a 2 min")
@@ -1166,7 +1175,7 @@ export default function DashboardPage() {
           };
 
           // Créer un objet pour suivre les compteurs par date et statut
-          const dateCounts: Record<string, { sent: number; pending: number }> = {};
+          const dateCounts: Record<string, {sent: number, pending: number}> = {};
 
           // Fonction pour traiter les SMS (envoyés ou en attente)
           const processSmsList = (smsList: unknown[], isPending: boolean) => {
@@ -1301,7 +1310,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">{error}</p>
           <Button onClick={() => window.location.reload()}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Réessayer
+            Reintentar
           </Button>
         </div>
     )
@@ -1311,17 +1320,16 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div className="flex flex-col justify-between space-y-4 md:flex-row md:items-center md:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Panel de control</h1>
             <p className="text-muted-foreground">
-              Aperçu de votre activité et de vos performances
+              Resumen de su actividad et de vos performances
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            disabled={loading}
-            className="h-9 w-9"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
             title="Rafraîchir les données"
           >
             <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -1331,32 +1339,32 @@ export default function DashboardPage() {
         {/* Grille des cartes de métriques */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
           <MetricsCard
-              title="Tickets ouverts"
+              title="Tickets abiertos"
               value={ticketsLoading ? "-" : openTicketsCount.toString()}
-              description="en attente de traitement"
+              description="esperando tratamiento"
               icon={<TicketIcon className="h-5 w-5 text-primary" />}
-              tooltip={`${openTicketsCount} tickets ouverts nécessitant une attention`}
+              tooltip={`${openTicketsCount} tickets abiertos necesitan atención`}
           />
           <MetricsCard
-              title="SMS en attente"
+              title="SMS en espera"
               value={loadingSms ? "-" : pendingSmsCount.toString()}
-              description="dans la file d'attente"
+              description="en cola"
               icon={<RefreshCw className="h-5 w-5 text-primary" />}
-              tooltip={`${pendingSmsCount} SMS en attente d'envoi`}
+              tooltip={`${pendingSmsCount} SMS en espera de envío`}
           />
           <MetricsCard
-              title="SMS envoyés"
+              title="SMS enviados"
               value={loadingSms ? "-" : sentSmsCount.toLocaleString()}
-              description="ce mois-ci"
+              description="este mes"
               icon={<MessageSquare className="h-5 w-5 text-primary" />}
-              tooltip={`${sentSmsCount} SMS envoyés ce mois-ci`}
+              tooltip={`${sentSmsCount} SMS enviados este mes`}
           />
           <MetricsCard
-              title="Clients actifs"
+              title="Clientes activos"
               value={clientsLoading ? "-" : activeClients.toString()}
-              description="sur la plateforme"
+              description="en la plataforma"
               icon={<UserCheck className="h-5 w-5 text-primary" />}
-              tooltip="Nombre de clients actuellement actifs"
+              tooltip="Número de clientes actualmente activos"
           />
         </div>
 
@@ -1365,15 +1373,15 @@ export default function DashboardPage() {
             <TabsList>
               <TabsTrigger value="overview" className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                Vue d&apos;ensemble
+                Vista general
               </TabsTrigger>
               <TabsTrigger value="analytics" className="flex items-center gap-2">
                 <BarChart2 className="h-4 w-4" />
-                Analyse
+                Análisis
               </TabsTrigger>
               <TabsTrigger value="reports" className="flex items-center gap-2">
                 <PieChartIcon className="h-4 w-4" />
-                Rapports
+                Informes
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1384,14 +1392,14 @@ export default function DashboardPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-muted-foreground" />
-                    Activité récente
+                    Actividad reciente
                   </CardTitle>
-                  <CardDescription>Évolution des SMS envoyés et en attente sur 7 jours</CardDescription>
+                  <CardDescription>Evolución de los SMS enviados y en espera durante 7 días</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loadingSms ? (
                       <div className="h-[300px] flex items-center justify-center">
-                        <p>Chargement des données SMS...</p>
+                        <p>Cargando datos de SMS...</p>
                       </div>
                   ) : (
                       <div className="h-[300px]">
@@ -1440,7 +1448,7 @@ export default function DashboardPage() {
                                 </span>,
                                 ''
                               ]}
-                              labelFormatter={(label) => `Jour: ${label}`}
+                              labelFormatter={(label) => `Día: ${label}`}
                             />
                             <Legend
                                 layout="horizontal"
@@ -1459,7 +1467,7 @@ export default function DashboardPage() {
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorSent)"
-                                name="SMS Envoyés"
+                                name="SMS Enviados"
                                 activeDot={{ r: 6, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
                                 yAxisId={0}
                                 className="fill-primary/10"
@@ -1471,7 +1479,7 @@ export default function DashboardPage() {
                                 strokeWidth={2}
                                 fillOpacity={1}
                                 fill="url(#colorPending)"
-                                name="SMS En attente"
+                                name="SMS En espera"
                                 activeDot={{ r: 6, stroke: 'hsl(var(--background))', strokeWidth: 2 }}
                                 yAxisId={0}
                                 className="fill-warning/10"
@@ -1488,14 +1496,14 @@ export default function DashboardPage() {
                 <CardHeader className="p-4 sm:p-6">
                   <CardTitle className="flex items-center gap-2">
                     <PieChartIcon className="h-5 w-5 text-muted-foreground" />
-                    Répartition des tickets
+                    Distribución de tickets
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
                     {ticketData && ticketData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart width={400} height={300}>
+                        <PieChart width={400} height={320} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                           <RechartsPie
                             data={ticketData}
                             cx="50%"
@@ -1505,19 +1513,43 @@ export default function DashboardPage() {
                             innerRadius={60}
                             paddingAngle={2}
                             dataKey="value"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
+                              const RADIAN = Math.PI / 180;
+                              const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                              
+                              return (
+                                <text
+                                  x={x}
+                                  y={y}
+                                  fill="white"
+                                  textAnchor="middle"
+                                  dominantBaseline="central"
+                                  style={{
+                                    fontSize: '11px',
+                                    padding: '0 5px',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'visible'
+                                  }}
+                                >
+                                  {`${name}: ${(percent * 100).toFixed(0)}%`}
+                                </text>
+                              );
+                            }}
                             fill="#8884d8"
                             style={{
-                              fontSize: '12px',
+                              fontSize: '11px',
                               fontWeight: '500',
+                              padding: '10px'
                             }}
                           >
                             {ticketData.map((entry, index) => {
-                              const key = entry.name.toUpperCase() as 'OUVERT' | 'EN_COURS' | 'FERME';
+                              const key = entry.originalName as keyof typeof statusColors;
                               return (
                                 <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={statusColors[key] || COLORS[index % COLORS.length]} 
+                                  key={`cell-${index}`}
+                                  fill={statusColors[key] || COLORS[index % COLORS.length]}
                                   stroke="#fff"
                                   strokeWidth={1}
                                 />
@@ -1546,13 +1578,13 @@ export default function DashboardPage() {
                               </span>,
                               name
                             ]}
-                            labelFormatter={(label) => `Statut: ${label}`}
+                            labelFormatter={(label) => `Estado: ${label}`}
                           />
                         </PieChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="h-full flex items-center justify-center">
-                        <p className="text-muted-foreground">Aucune donnée disponible</p>
+                        <p className="text-muted-foreground">No hay datos disponibles</p>
                       </div>
                     )}
                   </div>
@@ -1564,8 +1596,8 @@ export default function DashboardPage() {
           <TabsContent value="analytics" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Analyse annuelle des SMS</CardTitle>
-                <CardDescription>Statistiques annuelles des messages envoyés</CardDescription>
+                <CardTitle>Análisis anual de SMS</CardTitle>
+                <CardDescription>Estadísticas anuales de mensajes enviados</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
                 {smsStats.yearlyData && smsStats.yearlyData.length > 0 ? (
@@ -1598,6 +1630,7 @@ export default function DashboardPage() {
                         />
                         <Bar
                             dataKey="count"
+                            name="Cantidad"
                             radius={[4, 4, 0, 0]}
                             className="fill-primary"
                             yAxisId={0}
@@ -1606,7 +1639,7 @@ export default function DashboardPage() {
                     </ResponsiveContainer>
                 ) : (
                     <div className="h-full flex items-center justify-center">
-                      <p className="text-muted-foreground">Chargement des données annuelles...</p>
+                      <p className="text-muted-foreground">Cargando datos anuales...</p>
                     </div>
                 )}
               </CardContent>
@@ -1616,8 +1649,8 @@ export default function DashboardPage() {
           <TabsContent value="reports" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Clients les plus actifs</CardTitle>
-                <CardDescription>Top 5 des clients avec le plus de SMS en attente</CardDescription>
+                <CardTitle>Clientes más activos</CardTitle>
+                <CardDescription>Top 5 de clientes con más SMS en espera</CardDescription>
               </CardHeader>
               <CardContent>
                 {loadingTopActiveClients ? (
@@ -1627,9 +1660,9 @@ export default function DashboardPage() {
                 ) : topActiveClients.length > 0 ? (
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground mb-2">
-                        <div>Client</div>
-                        <div className="text-right">Messages</div>
-                        <div className="text-right">Dernière activité</div>
+                        <div>Cliente</div>
+                        <div className="text-right">Mensajes</div>
+                        <div className="text-right">Última actividad</div>
                       </div>
                       {topActiveClients.map((client) => (
                           <div key={client.clientId} className="grid grid-cols-3 gap-4 items-center">
@@ -1650,7 +1683,7 @@ export default function DashboardPage() {
                     </div>
                 ) : (
                     <div className="h-[200px] flex items-center justify-center">
-                      <p className="text-muted-foreground">Aucune activité client récente</p>
+                      <p className="text-muted-foreground">No hay actividad de cliente reciente</p>
                     </div>
                 )}
               </CardContent>
@@ -1663,7 +1696,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                Activité SMS récente
+                Actividad SMS reciente
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -1673,16 +1706,16 @@ export default function DashboardPage() {
                     <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-3 py-2 sm:px-4 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                        Émetteur
+                        Emisor
                       </th>
                       <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                        Statut
+                        Estado
                       </th>
                       <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                        Type
+                        Tipo
                       </th>
                       <th scope="col" className="px-2 py-2 sm:px-3 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                        Date
+                        Fecha
                       </th>
                     </tr>
                     </thead>
@@ -1694,17 +1727,17 @@ export default function DashboardPage() {
                             <div className="flex justify-center">
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
-                            <p className="mt-2">Chargement des SMS récents...</p>
+                            <p className="mt-2">Cargando SMS recientes...</p>
                           </td>
                         </tr>
                     ) : recentSms.length > 0 ? (
                         // Afficher les vrais SMS
                         recentSms.map((sms) => {
                           const statusText = {
-                            'ENVOYE': 'Envoyé',
-                            'PENDING': 'En attente',
-                            'DELIVERED': 'Livré',
-                            'FAILED': 'Échec'
+                            'ENVOYE': 'Enviado',
+                            'PENDING': 'En espera',
+                            'DELIVERED': 'Entregado',
+                            'FAILED': 'Error'
                           }[sms.statut] || sms.statut;
 
                           const statusColor = {
@@ -1717,8 +1750,8 @@ export default function DashboardPage() {
 
                           // Déterminer le libellé du type
                           const typeLabel = {
-                            'UNIDES': 'SMS Unique',
-                            'MULDESP': 'SMS Programmés'
+                            'UNIDES': 'SMS Único',
+                            'MULDESP': 'SMS Programados'
                           }[sms.type] || sms.type;
 
                           // Couleur pour le type
@@ -1734,7 +1767,7 @@ export default function DashboardPage() {
                                   {sms.type === 'MULDESP' && (
                                       <div className="mt-1 text-xs text-gray-500 space-y-0.5">
                     {sms.dateDebutEnvoi && (
-                      <div className="whitespace-nowrap">Déb: {new Date(sms.dateDebutEnvoi).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="whitespace-nowrap">Deb: {new Date(sms.dateDebutEnvoi).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                     )}
                     {sms.dateFinEnvoi && (
                       <div className="whitespace-nowrap">Fin: {new Date(sms.dateFinEnvoi).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
@@ -1763,7 +1796,7 @@ export default function DashboardPage() {
                         <tr>
                           <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
                             <MessageSquare className="mx-auto h-12 w-12 text-gray-300" />
-                            <p className="mt-2">Aucun SMS récent</p>
+                            <p className="mt-2">No hay SMS recientes</p>
                           </td>
                         </tr>
                     )}
@@ -1779,7 +1812,7 @@ export default function DashboardPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  <span>Statistiques SMS</span>
+                  <span>Estadísticas SMS</span>
                   <div className={`flex items-center text-sm ${smsStats.trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                     <span>{smsStats.trend >= 0 ? '+' : ''}{smsStats.trend}%</span>
                     {smsStats.trend >= 0 ? (
@@ -1792,7 +1825,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <Progress value={smsStats.progress} className="h-2 [&>div]:bg-blue-600" />
                   <p className="text-xs text-muted-foreground">
-                    {smsStats.trend >= 0 ? 'Hausse' : 'Baisse'} de {Math.abs(smsStats.trend)}% par rapport au mois dernier
+                    {smsStats.trend >= 0 ? 'Aumento' : 'Disminución'} de {Math.abs(smsStats.trend)}% con respecto al mes anterior
                   </p>
                 </div>
               </CardHeader>
@@ -1800,12 +1833,12 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">SMS envoyés</span>
-                      <span className="text-sm font-semibold">{smsStats.current} ce mois-ci</span>
+                      <span className="text-sm font-medium">SMS enviados</span>
+                      <span className="text-sm font-semibold">{smsStats.current} este mes</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Mois dernier: {smsStats.previous}</span>
-                      <span>Évolution: {smsStats.trend >= 0 ? '+' : ''}{smsStats.trend}%</span>
+                      <span>Mes anterior: {smsStats.previous}</span>
+                      <span>Evolución: {smsStats.trend >= 0 ? '+' : ''}{smsStats.trend}%</span>
                     </div>
                   </div>
                 </div>
@@ -1816,7 +1849,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="h-5 w-5 text-muted-foreground" />
-                  Activité récente
+                  Actividad reciente
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1832,16 +1865,16 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm">
-                            <span className="font-medium">Période de facturation</span>
+                            <span className="font-medium">Período de facturación</span>
                             <span className="text-muted-foreground"> {billingData[0].mois}/{billingData[0].exercice.annee}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            Du {new Date(billingData[0].dateDebutConsommation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                            {' au '}
-                            {new Date(billingData[0].dateFinConsommation).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            Del {new Date(billingData[0].dateDebutConsommation).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {' al '}
+                            {new Date(billingData[0].dateFinConsommation).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Date de génération: {new Date(billingData[0].dateGenerationFacture).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            Fecha de generación: {new Date(billingData[0].dateGenerationFacture).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                           </p>
                         </div>
                       </div>
@@ -1858,8 +1891,8 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm">
-                            <span className="font-medium">Nouveau ticket créé</span>
-                            <span className="text-muted-foreground"> par {latestTicket.emailClient}</span>
+                            <span className="font-medium">Nuevo ticket creado</span>
+                            <span className="text-muted-foreground"> por {latestTicket.emailClient}</span>
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {formatRelativeTime(latestTicket.createdAt)}

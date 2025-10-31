@@ -26,7 +26,7 @@ export function UserFilters({
         <div className="w-full sm:w-1/3">
           <Input
             type="search"
-            placeholder="Rechercher par nom, email ou téléphone..."
+            placeholder="Buscar por nombre, email o teléfono..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full"
@@ -38,19 +38,19 @@ export function UserFilters({
             onValueChange={(value: string) => onRoleFilterChange(value === 'all' ? '' : value as Role)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Tous les rôles" />
+              <SelectValue placeholder="Todos los roles" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les rôles</SelectItem>
-              <SelectItem value="ADMIN">Administrateur</SelectItem>
-              <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-              <SelectItem value="AUDITEUR">Auditeur</SelectItem>
+              <SelectItem value="all">Todos los roles</SelectItem>
+              <SelectItem value="ADMIN">Administrador</SelectItem>
+              <SelectItem value="SUPER_ADMIN">Super Administrador</SelectItem>
+              <SelectItem value="AUDITEUR">Auditor</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Button onClick={onAddUser} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
-          Ajouter un utilisateur
+          Agregar usuario
         </Button>
       </div>
     </div>

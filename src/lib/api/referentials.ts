@@ -250,9 +250,9 @@ export async function updateReferential(refID: string | number, data: Referentie
     // Sinon, on crée une nouvelle erreur avec le message d'erreur
     const errorMessage = typeof error === 'object' && error !== null && 'message' in error
       ? String(error.message)
-      : 'Une erreur inattendue est survenue';
+      : 'Ocurrió un error inesperado';
       
-    throw new Error(`Erreur lors de la mise à jour du référentiel: ${errorMessage}`);
+    throw new Error(`Error al actualizar el referencial: ${errorMessage}`);
   } finally {
     console.log('=== Fin de updateReferential ===');
   }
@@ -353,9 +353,9 @@ export async function deleteReferential(refID: string | number): Promise<void> {
     // Sinon, on crée une nouvelle erreur avec le message d'erreur
     const errorMessage = typeof error === 'object' && error !== null && 'message' in error
       ? String(error.message)
-      : 'Une erreur inattendue est survenue';
+      : 'Ocurrió un error inesperado';
       
-    throw new Error(`Erreur lors de la suppression du référentiel: ${errorMessage}`);
+    throw new Error(`Error al eliminar el referencial: ${errorMessage}`);
   } finally {
     console.log('=== Fin de deleteReferential ===');
   }

@@ -69,8 +69,8 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
       rccm: initialData.rccm || "",
       emetteur: initialData.emetteur || "",
       coutSmsTtc: initialData.coutSmsTtc || 25,
-  // Ensure typeCompte is always a string (CreateClientForm requires it)
-  typeCompte: (initialData.typeCompte ?? "POSTPAYE") as 'POSTPAYE' | 'PREPAYE' | string,
+      // Ensure typeCompte is always a string (CreateClientForm requires it)
+      typeCompte: (initialData.typeCompte ?? "POSTPAYE") as 'POSTPAYE' | 'PREPAYE' | string,
       indicatifPays: indicatifPays || (paysParDefaut?.value1 || ""),
       telephoneAvecIndicatif: telephoneAvecIndicatif || ""
     };
@@ -81,7 +81,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
   const handleNext = () => {
     if (step === 1) {
       if (!formData.raisonSociale || !formData.email || !formData.telephone) {
-        toast.error("Veuillez remplir tous les champs obligatoires")
+        toast.error("Por favor complete todos los campos obligatorios")
         return
       }
     }
@@ -103,19 +103,19 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
       
       // Validation de l'email
       if (!validateEmail(formData.email)) {
-        toast.error("Veuillez entrer une adresse email valide");
+        toast.error("Por favor ingrese una dirección de correo electrónico válida");
         return;
       }
 
       // Validation de l'émetteur (si on est à l'étape 2)
       if (step === 2 && !formData.emetteur) {
-        toast.error("Veuillez renseigner l'émetteur");
+        toast.error("Por favor ingrese el emisor");
         return;
       }
       
       // Validation du numéro de téléphone
       if (!formData.telephoneAvecIndicatif) {
-        toast.error("Veuillez renseigner un numéro de téléphone");
+        toast.error("Por favor ingrese un número de teléfono");
         return;
       }
       
@@ -136,17 +136,17 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
       await onSave(dataToSave);
       
     } catch (error) {
-      console.error('Erreur lors de la soumission du formulaire:', error);
-      toast.error("Une erreur est survenue lors de la sauvegarde");
+      console.error('Error al enviar el formulario:', error);
+      toast.error("Ocurrió un error al guardar");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   const handleClose = () => {
-    setStep(1)
-    onClose()
-  }
+    setStep(1);
+    onClose();
+  };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Ne garder que les chiffres
@@ -181,9 +181,9 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
   }
 
   // Trier les listes par ordre alphabétique
-  const secteursTries = [...secteurs].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
-  const villesTriees = [...villes].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
-  const paysTries = [...pays].sort((a, b) => a.value1.localeCompare(b.value1, 'fr', { sensitivity: 'base' }));
+  const secteursTries = [...secteurs].sort((a, b) => a.value1.localeCompare(b.value1, 'es', { sensitivity: 'base' }));
+  const villesTriees = [...villes].sort((a, b) => a.value1.localeCompare(b.value1, 'es', { sensitivity: 'base' }));
+  const paysTries = [...pays].sort((a, b) => a.value1.localeCompare(b.value1, 'es', { sensitivity: 'base' }));
   
   // Log pour déboguer
   console.log('=== DEBUG PAYS ===');
@@ -226,15 +226,15 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
   
   console.log('==================');
   
-  // Fonction pour afficher le texte du sélecteur
+  // Función para mostrar el texto del selector
   const afficherTexteSelecteur = () => {
     console.log('=== afficherTexteSelecteur ===');
     console.log('indicatifPays:', formData.indicatifPays);
-    console.log('Nombre de pays disponibles:', pays.length);
+    console.log('Número de países disponibles:', pays.length);
     
     if (!formData.indicatifPays) {
-      console.log('Aucun indicatifPays défini');
-      return "Sélectionner un pays";
+      console.log('Ningún indicativo de país definido');
+      return "Seleccionar un país";
     }
     
     // Afficher les 3 premiers pays pour débogage
@@ -262,13 +262,13 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
     
     if (!paysTrouve) {
       console.log('Aucun pays trouvé avec cet indicatif');
-      // Retourner le premier pays disponible comme valeur par défaut
+      // Devolver el primer país disponible como valor por defecto
       const premierPays = pays[0];
       if (premierPays) {
-        console.log('Utilisation du premier pays disponible comme valeur par défaut');
-        return premierPays.value2 || premierPays.value1 || premierPays.code || "Sélectionner un pays";
+        console.log('Usando el primer país disponible como valor por defecto');
+        return premierPays.value2 || premierPays.value1 || premierPays.code || "Seleccionar un país";
       }
-      return `Inconnu (${formData.indicatifPays})`;
+      return `Desconocido (${formData.indicatifPays})`;
     }
     
     console.log('Pays trouvé:', {
@@ -291,6 +291,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               className={`w-3 h-3 rounded-full ${
                 i <= step ? "bg-primary" : "bg-gray-300"
               }`}
+              aria-label={`Paso ${i} ${i <= step ? 'completado' : 'pendiente'}`}
             />
           ))}
         </div>
@@ -312,7 +313,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">Correo electrónico *</Label>
               <Input
                 id="email"
                 type="email"
@@ -324,7 +325,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adresse">Adresse</Label>
+              <Label htmlFor="adresse">Dirección</Label>
               <Input
                 id="adresse"
                 value={formData.adresse}
@@ -337,7 +338,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="secteurActivite">Secteur d&lsquo;activité</Label>
+              <Label htmlFor="secteurActivite">Sector de actividad</Label>
               <Select
                 value={formData.secteurActivite}
                 onValueChange={(value) =>
@@ -345,7 +346,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un secteur" />
+                  <SelectValue placeholder="Seleccionar un sector" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-auto">
                   {secteursTries.map((secteur) => (
@@ -357,7 +358,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ville">Ville</Label>
+              <Label htmlFor="ville">Ciudad</Label>
               <Select
                 value={formData.ville}
                 onValueChange={(value) =>
@@ -365,7 +366,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une ville" />
+                  <SelectValue placeholder="Seleccionar una ciudad" />
                 </SelectTrigger>
                 <SelectContent className="max-h-60 overflow-auto">
                   {villesTriees.map((ville) => (
@@ -379,7 +380,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="telephone">Téléphone *</Label>
+            <Label htmlFor="telephone">Teléfono *</Label>
             <div className="flex gap-2">
               <Select
                 value={formData.indicatifPays || ''}
@@ -408,7 +409,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
             </div>
             {formData.telephoneAvecIndicatif && (
               <p className="text-xs text-muted-foreground">
-                Numéro complet: {formData.telephoneAvecIndicatif}
+                Número completo: {formData.telephoneAvecIndicatif}
               </p>
             )}
           </div>
@@ -442,7 +443,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="emetteur">Émetteur *</Label>
+              <Label htmlFor="emetteur">Emisor *</Label>
               <Input
                 id="emetteur"
                 value={formData.emetteur}
@@ -452,13 +453,14 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 maxLength={11}
                 className={formData.emetteur.length >= 11 ? "border-red-500 focus-visible:ring-red-500" : undefined}
                 required
+                placeholder="Máx. 11 caracteres"
               />
               <p className={`text-xs ${formData.emetteur.length >= 11 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                {formData.emetteur.length}/11 caractères
+                {formData.emetteur.length}/11 caracteres
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="coutSmsTtc">Coût SMS TTC</Label>
+              <Label htmlFor="coutSmsTtc">Costo SMS IVA incluido</Label>
               <Input
                 id="coutSmsTtc"
                 type="number"
@@ -469,13 +471,16 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                     coutSmsTtc: Number(e.target.value),
                   })
                 }
+                min="0"
+                step="0.01"
+                placeholder="0.00"
               />
             </div>
           </div>
 
           {mode === 'create' && (
             <div className="space-y-2">
-              <Label htmlFor="typeCompte">Type de compte</Label>
+              <Label htmlFor="typeCompte">Tipo de cuenta *</Label>
               <Select
                 value={formData.typeCompte}
                 onValueChange={(value) =>
@@ -483,11 +488,11 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un type de compte" />
+                  <SelectValue placeholder="Seleccionar un tipo de cuenta" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="POSTPAYE">Postpayé</SelectItem>
-                  <SelectItem value="PREPAYE">Prépayé</SelectItem>
+                  <SelectItem value="POSTPAYE">Pago posterior</SelectItem>
+                  <SelectItem value="PREPAYE">Prepago</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -500,7 +505,7 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
           {step > 1 && (
             <Button variant="outline" onClick={handlePrevious}>
               <ChevronLeft className="h-4 w-4 mr-2" />
-              Précédent
+              Anterior
             </Button>
           )}
         </div>
@@ -508,12 +513,12 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleClose}>
             <X className="h-4 w-4 mr-2" />
-            Annuler
+            Cancelar
           </Button>
 
           {step < 2 ? (
             <Button onClick={handleNext}>
-              Suivant
+              Siguiente
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           ) : (
@@ -524,12 +529,12 @@ export function ClientForm({ mode, initialData, onSave, onClose, villes, secteur
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {mode === 'create' ? 'Création...' : 'Enregistrement...'}
+                  {mode === 'create' ? 'Creando...' : 'Guardando...'}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" />
-                  {mode === 'create' ? 'Créer' : 'Enregistrer'}
+                  {mode === 'create' ? 'Crear' : 'Guardar'}
                 </>
               )}
             </Button>

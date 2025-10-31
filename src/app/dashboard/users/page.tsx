@@ -716,9 +716,9 @@ export default function UsersPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Gestion des utilisateurs</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Gestión de usuarios</h1>
         <p className="text-muted-foreground">
-          Gérez les comptes des utilisateurs et leurs permissions
+          Gestione las cuentas de usuario y sus permisos
         </p>
       </div>
       
@@ -754,7 +754,7 @@ export default function UsersPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
-              {currentManager ? 'Modifier un utilisateur' : 'Ajouter un utilisateur'}
+              {currentManager ? 'Modificar usuario' : 'Agregar usuario'}
             </DialogTitle>
           </DialogHeader>
           <UserForm 

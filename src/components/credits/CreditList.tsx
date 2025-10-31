@@ -22,6 +22,7 @@ interface CreditListProps {
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
+  approveLoading?: Record<string, boolean>
 }
 
 export function CreditList({ 
@@ -35,17 +36,18 @@ export function CreditList({
   totalElements,
   pageSize,
   onPageChange,
-  onPageSizeChange
+  onPageSizeChange,
+  approveLoading = {}
 }: CreditListProps) {
   const [clients, setClients] = useState<Record<string, ClientInfo>>({})
   const [loadingClients, setLoadingClients] = useState<boolean>(false)
   const { user } = useAuth()
   const canPerformActions = user?.role !== 'AUDITEUR'
   
-  // Charger les informations des clients manquants
+  // Cargar información de clientes faltantes
   useEffect(() => {
     const loadMissingClients = async () => {
-      // Filtrer les crédits qui n'ont pas encore de données client chargées
+      // Filtrar créditos que aún no tienen datos de cliente cargados
       const missingClientIds = credits
         .filter(credit => !clients[credit.clientId])
         .map(credit => credit.clientId)
@@ -54,7 +56,7 @@ export function CreditList({
       
       setLoadingClients(true)
       try {
-        // Charger les clients manquants par lots de 10 pour éviter les requêtes excessives
+        // Cargar clientes faltantes en lotes de 10 para evitar solicitudes excesivas
         const batchSize = 10
         for (let i = 0; i < missingClientIds.length; i += batchSize) {
           const batch = missingClientIds.slice(i, i + batchSize)
@@ -62,7 +64,7 @@ export function CreditList({
             batch.map(id => getClientById(id))
           )
           
-          // Mettre à jour l'état avec les nouveaux clients
+          // Actualizar el estado con los nuevos clientes
           setClients(prevClients => ({
             ...prevClients,
             ...newClients.reduce((acc, client) => {
@@ -72,7 +74,7 @@ export function CreditList({
           }))
         }
       } catch (error) {
-        console.error("Erreur lors du chargement des clients:", error)
+        console.error("Error al cargar los clientes:", error)
       } finally {
         setLoadingClients(false)
       }
@@ -96,7 +98,7 @@ export function CreditList({
   if (credits.length === 0) {
     return (
       <div className="text-center py-12 border rounded-lg">
-        <p className="text-muted-foreground">Aucune demande de crédit trouvée</p>
+        <p className="text-muted-foreground">No se encontraron solicitudes de crédito</p>
       </div>
     )
   }
@@ -107,14 +109,14 @@ export function CreditList({
         <Table>
           <TableHeader>
           <TableRow>
-            <TableHead>ID commande</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead>Nbr SMS</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead>Créé le</TableHead>
-            <TableHead>Validé le</TableHead>
-            <TableHead>Validé par</TableHead>
-            <TableHead className="w-12">Actions</TableHead>
+            <TableHead>Código</TableHead>
+            <TableHead>Cliente</TableHead>
+            <TableHead>Cantidad</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead>Fecha de creación</TableHead>
+            <TableHead>Fecha de validación</TableHead>
+            <TableHead>Validado por</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -123,7 +125,7 @@ export function CreditList({
               <TableCell className="font-mono text-sm">{credit.requestCode}</TableCell>
               <TableCell>
                 {loadingClients && !clients[credit.clientId] 
-                  ? 'Chargement...' 
+                  ? 'Cargando...' 
                   : clients[credit.clientId]?.raisonSociale || credit.clientId}
               </TableCell>
               <TableCell>{credit.quantity}</TableCell>
@@ -132,14 +134,14 @@ export function CreditList({
               </TableCell>
               <TableCell>
                 {credit.createdAt ? (
-                  new Date(credit.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  new Date(credit.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
                 ) : (
                   <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
               <TableCell>
                 {credit.validatedAt ? (
-                  new Date(credit.validatedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                  new Date(credit.validatedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
                 ) : (
                   <span className="text-muted-foreground">-</span>
                 )}
@@ -152,20 +154,29 @@ export function CreditList({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Ouvrir le menu</span>
+                        <span className="sr-only">Abrir menú</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                       {canApprove(user) && (
                         <DropdownMenuItem
                           onClick={() => onApprove(credit.id)}
-                          disabled={credit.status !== 'PENDING'}
+                          disabled={credit.status !== 'PENDING' || approveLoading[credit.id]}
                           className="cursor-pointer"
                         >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Approuver
+                          {approveLoading[credit.id] ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Procesando...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Aprobar
+                            </>
+                          )}
                         </DropdownMenuItem>
                       )}
                       {canReject(user) && (
@@ -175,7 +186,7 @@ export function CreditList({
                           className="cursor-pointer"
                         >
                           <XCircle className="mr-2 h-4 w-4" />
-                          Rejeter
+                          Rechazar
                         </DropdownMenuItem>
                       )}
                       {credit.status === 'REJECTED' && credit.rejectReason && (
@@ -184,7 +195,7 @@ export function CreditList({
                           className="cursor-pointer"
                         >
                           <Eye className="mr-2 h-4 w-4" />
-                          Voir le motif
+                          Ver motivo
                         </DropdownMenuItem>
                       )}
                     </DropdownMenuContent>
@@ -202,14 +213,14 @@ export function CreditList({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex-1 text-sm text-muted-foreground">
-          Affichage de {startItem} à {endItem} sur {totalElements} demandes
+      <div className="flex items-center justify-between px-2 py-4">
+        <div className="text-sm text-muted-foreground">
+          Mostrando {startItem} a {endItem} de {totalElements} solicitudes
         </div>
         
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Lignes par page</p>
+            <p className="text-sm font-medium">Filas por página</p>
             <Select
               value={`${pageSize}`}
               onValueChange={(value) => onPageSizeChange(Number(value))}

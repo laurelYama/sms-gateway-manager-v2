@@ -78,16 +78,16 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Rejeter la demande de crédit</DialogTitle>
+            <DialogTitle>Rechazar la solicitud de crédito</DialogTitle>
             <div className="text-sm text-muted-foreground">
-              Êtes-vous sûr de vouloir rejeter cette demande de crédit ?
+              ¿Está seguro de que desea rechazar esta solicitud de crédito?
               {credit && (
                 <div className="mt-2 space-y-1">
                   <div className="text-sm">
-                    <span className="font-medium">ID commande :</span> {credit.requestCode || `${credit.id.substring(0, 8)}...`}
+                    <Label className="mt-4">Otro motivo (si es necesario)</Label> {credit.requestCode || `${credit.id.substring(0, 8)}...`}
                   </div>
                   <div className="text-sm">
-                    <span className="font-medium">Nbr SMS :</span> {credit.quantity}
+                    <span className="font-medium">Núm. de SMS:</span> {credit.quantity}
                   </div>
                 </div>
               )}
@@ -95,32 +95,32 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label>Motif du rejet *</Label>
+              <Label>Motivo del rechazo *</Label>
               <Select
                 value={selectedMotif}
                 onValueChange={(val) => setSelectedMotif(val)}
                 disabled={loading || loadingMotifs}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingMotifs ? "Chargement..." : "Sélectionner un motif"} />
+                  <SelectValue placeholder={loadingMotifs ? "Cargando..." : "Seleccionar un motivo"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-72 overflow-auto">
                   {motifs.map((m) => (
                     <SelectItem key={m.refID} value={m.value1}>{m.value1}</SelectItem>
                   ))}
-                  <SelectItem value="AUTRES">Autres...</SelectItem>
+                  <SelectItem value="AUTRES">Otros...</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {selectedMotif === 'AUTRES' && (
               <div className="space-y-2">
-                <Label htmlFor="customReason">Motif personnalisé *</Label>
+                <Label htmlFor="customReason">Motivo personalizado *</Label>
                 <Textarea
                   id="customReason"
                   value={customReason}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCustomReason(e.target.value)}
-                  placeholder="Saisir le motif personnalisé"
+                  placeholder="Ingrese el motivo personalizado"
                   required
                   disabled={loading}
                 />
@@ -128,20 +128,11 @@ export function RejectCreditDialog({ open, onOpenChange, credit, onReject, loadi
             )}
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Annuler
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Cancelar
             </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={loading || (!selectedMotif || (selectedMotif === 'AUTRES' && !customReason.trim()))}
-            >
-              {loading ? "En cours..." : "Confirmer le rejet"}
+            <Button type="submit" disabled={!selectedMotif || (selectedMotif === 'AUTRES' && !customReason.trim()) || loading}>
+              {loading ? 'Procesando...' : 'Confirmar rechazo'}
             </Button>
           </DialogFooter>
         </form>
